@@ -1,0 +1,16 @@
+{
+    "name": "hubspot-plugin",
+    "url": "https://github.com/PostHog/hubspot-plugin",
+    "description": "Send contact data to Hubspot on PostHog identify events.",
+    "main": "index.js",
+    "config": {
+        "hubspotApiKey": {
+            "hint": "Can be acquired under Profile Preferences -> Integrations",
+            "name": "Hubspot API Key",
+            "type": "string",
+            "order": 1,
+            "default": "",
+            "required": true
+        }
+    }
+}
