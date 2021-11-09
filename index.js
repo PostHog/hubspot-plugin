@@ -15,7 +15,8 @@ async function onEvent(event, { config, global }) {
     if (triggeringEvents.indexOf(event.event) >= 0) {
         const email = getEmailFromEvent(event)
         if (email) {
-            if (config.ignoredEmails.split(',').indexOf(email.split('@')[1]) >= 0) {
+            const emailDomainsToIgnore = config.ignoredEmails.split(',')
+            if (emailDomainsToIgnore.indexOf(email.split('@')[1]) >= 0) {
                 return
             }
             await createHubspotContact(
