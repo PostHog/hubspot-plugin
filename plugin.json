@@ -11,6 +11,22 @@
             "type": "string",
             "default": "",
             "required": true
+        },
+        {
+            "key": "triggeringEvent",
+            "hint": "The PostHog event you want to trigger Contact creation in HubSpot. By default, we recommend using the $identify event.",
+            "name": "Triggering event",
+            "type": "string",
+            "default": "$identify",
+            "required": true
+        },
+        {
+            "key": "additionalPropertyMappings",
+            "hint": "A mapping of additional PostHog event or person properties to map to newly created Hubspot Contacts. Provide a comma-separated mapping of: personPropertyName:hubSpotPropertyName",
+            "name": "Additional PostHog to HubSpot property mappings",
+            "type": "string",
+            "default": "",
+            "required": false
         }
     ]
 }
