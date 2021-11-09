@@ -10,22 +10,39 @@ async function setupPlugin({ config, global }) {
     }
 }
 
-async function processEventBatch(events, { global }) {
-    let usefulEvents = [...events].filter((e) => e.event === '$identify')
-    for (let event of usefulEvents) {
-        const email = getEmailFromIdentifyEvent(event)
+async function onEvent(event, { config, global }) {
+    const triggeringEvents = config.triggeringEvents.split(',')
+    if (triggeringEvents.indexOf(event.event) >= 0) {
+        const email = getEmailFromEvent(event)
         if (email) {
-            await handleHubspotIdentify(email, event['$set'] ?? {}, global.hubspotAuth)
+            await createHubspotContact(
+                email,
+                {
+                    ...(event['$set'] ?? {}),
+                    ...(event['properties'] ?? {})
+                },
+                global.hubspotAuth,
+                config.additionalPropertyMappings
+            )
         }
     }
-    return events
 }
 
-async function handleHubspotIdentify(email, userProperties, authQs) {
+async function createHubspotContact(email, properties, authQs, additionalPropertyMappings) {
     let hubspotFilteredProps = {}
-    for (const [key, val] of Object.entries(userProperties)) {
+    for (const [key, val] of Object.entries(properties)) {
         if (hubspotPropsMap[key]) {
             hubspotFilteredProps[hubspotPropsMap[key]] = val
+        }
+    }
+
+    if (additionalPropertyMappings) {
+        for (let mapping of additionalPropertyMappings.split(',')) {
+            let postHogProperty = mapping.split(':')[0]
+            let hubSpotProperty = mapping.split(':')[1]
+            if (postHogProperty in properties) {
+                hubspotFilteredProps[hubSpotProperty] = properties[postHogProperty]
+            }
         }
     }
 
@@ -33,9 +50,9 @@ async function handleHubspotIdentify(email, userProperties, authQs) {
         `https://api.hubapi.com/crm/v3/objects/contacts?${authQs}`,
         {
             headers: {
-                'Content-Type': 'application/json',
+                'Content-Type': 'application/json'
             },
-            body: JSON.stringify({ properties: { email: email, ...hubspotFilteredProps } }),
+            body: JSON.stringify({ properties: { email: email, ...hubspotFilteredProps } })
         },
         'POST'
     )
@@ -72,12 +89,20 @@ function isEmail(email) {
     return re.test(String(email).toLowerCase())
 }
 
-function getEmailFromIdentifyEvent(event) {
-    return isEmail(event.distinct_id)
-        ? event.distinct_id
-        : !!event['$set'] && Object.keys(event['$set']).includes('email')
-        ? event['$set']['email']
-        : ''
+function getEmailFromEvent(event) {
+    if (isEmail(event.distinct_id)) {
+        return event.distinct_id
+    } else if (event['$set'] && Object.keys(event['$set']).includes('email')) {
+        if (isEmail(event['$set']['email'])) {
+            return event['$set']['email']
+        }
+    } else if (event['properties'] && Object.keys(event['properties']).includes('email')) {
+        if (isEmail(event['properties']['email'])) {
+            return event['properties']['email']
+        }
+    }
+
+    return null
 }
 
 const hubspotPropsMap = {
@@ -96,5 +121,5 @@ const hubspotPropsMap = {
     website: 'website',
     domain: 'website',
     company_website: 'website',
-    companyWebsite: 'website',
+    companyWebsite: 'website'
 }
