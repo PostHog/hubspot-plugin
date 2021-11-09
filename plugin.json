@@ -13,9 +13,9 @@
             "required": true
         },
         {
-            "key": "triggeringEvent",
-            "hint": "The PostHog event you want to trigger Contact creation in HubSpot. By default, we recommend using the $identify event.",
-            "name": "Triggering event",
+            "key": "triggeringEvents",
+            "hint": "A comma-separated list of PostHog events you want to trigger Contact creation in HubSpot. By default, we recommend using the $identify event.",
+            "name": "Triggering events",
             "type": "string",
             "default": "$identify",
             "required": true

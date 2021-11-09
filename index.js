@@ -11,7 +11,8 @@ async function setupPlugin({ config, global }) {
 }
 
 async function onEvent(event, { config, global }) {
-    if (event.event === config.triggeringEvent) {
+    const triggeringEvents = config.triggeringEvents.split(',')
+    if (triggeringEvents.indexOf(event.event) >= 0) {
         const email = getEmailFromEvent(event)
         if (email) {
             await createHubspotContact(
