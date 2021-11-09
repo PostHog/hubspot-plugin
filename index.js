@@ -1,4 +1,4 @@
-async function setupPlugin({config, global}) {
+async function setupPlugin({ config, global }) {
     global.hubspotAuth = `hapikey=${config.hubspotApiKey}`
 
     const authResponse = await fetchWithRetry(
@@ -10,14 +10,19 @@ async function setupPlugin({config, global}) {
     }
 }
 
-async function onEvent(event, {config, global}) {
+async function onEvent(event, { config, global }) {
     if (event.event === config.triggeringEvent) {
         const email = getEmailFromEvent(event)
         if (email) {
-            await createHubspotContact(email, {
-                ...event['$set'] ?? {},
-                ...event['properties'] ?? {}
-            }, global.hubspotAuth, config.additionalPropertyMappings)
+            await createHubspotContact(
+                email,
+                {
+                    ...(event['$set'] ?? {}),
+                    ...(event['properties'] ?? {})
+                },
+                global.hubspotAuth,
+                config.additionalPropertyMappings
+            )
         }
     }
 }
@@ -31,9 +36,9 @@ async function createHubspotContact(email, properties, authQs, additionalPropert
     }
 
     if (additionalPropertyMappings) {
-        for (let mapping of additionalPropertyMappings.split(",")) {
-            let postHogProperty = mapping.split(":")[0]
-            let hubSpotProperty = mapping.split(":")[1]
+        for (let mapping of additionalPropertyMappings.split(',')) {
+            let postHogProperty = mapping.split(':')[0]
+            let hubSpotProperty = mapping.split(':')[1]
             if (postHogProperty in properties) {
                 hubspotFilteredProps[hubSpotProperty] = properties[postHogProperty]
             }
@@ -44,9 +49,9 @@ async function createHubspotContact(email, properties, authQs, additionalPropert
         `https://api.hubapi.com/crm/v3/objects/contacts?${authQs}`,
         {
             headers: {
-                'Content-Type': 'application/json',
+                'Content-Type': 'application/json'
             },
-            body: JSON.stringify({properties: {email: email, ...hubspotFilteredProps}}),
+            body: JSON.stringify({ properties: { email: email, ...hubspotFilteredProps } })
         },
         'POST'
     )
@@ -63,7 +68,7 @@ async function createHubspotContact(email, properties, authQs, additionalPropert
 
 async function fetchWithRetry(url, options = {}, method = 'GET', isRetry = false) {
     try {
-        const res = await fetch(url, {method: method, ...options})
+        const res = await fetch(url, { method: method, ...options })
         return res
     } catch {
         if (isRetry) {
@@ -115,5 +120,5 @@ const hubspotPropsMap = {
     website: 'website',
     domain: 'website',
     company_website: 'website',
-    companyWebsite: 'website',
+    companyWebsite: 'website'
 }
