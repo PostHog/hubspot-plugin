@@ -12,6 +12,7 @@ async function setupPlugin({ config, global }) {
 
 async function onEvent(event, { config, global }) {
     const triggeringEvents = config.triggeringEvents.split(',')
+
     if (triggeringEvents.indexOf(event.event) >= 0) {
         const email = getEmailFromEvent(event)
         if (email) {
@@ -26,13 +27,14 @@ async function onEvent(event, { config, global }) {
                     ...(event['properties'] ?? {})
                 },
                 global.hubspotAuth,
-                config.additionalPropertyMappings
+                config.additionalPropertyMappings,
+                event['sent_at']
             )
         }
     }
 }
 
-async function createHubspotContact(email, properties, authQs, additionalPropertyMappings) {
+async function createHubspotContact(email, properties, authQs, additionalPropertyMappings, eventSendTime) {
     let hubspotFilteredProps = {}
     for (const [key, val] of Object.entries(properties)) {
         if (hubspotPropsMap[key]) {
@@ -44,7 +46,12 @@ async function createHubspotContact(email, properties, authQs, additionalPropert
         for (let mapping of additionalPropertyMappings.split(',')) {
             let postHogProperty = mapping.split(':')[0]
             let hubSpotProperty = mapping.split(':')[1]
-            if (postHogProperty in properties) {
+
+            // special case to convert an event's timestamp to the format Hubspot uses them
+            if (postHogProperty === 'sent_at') {
+                const d = new Date(eventSendTime)
+                hubspotFilteredProps[hubSpotProperty] = d.getTime()
+            } else if (postHogProperty in properties) {
                 hubspotFilteredProps[hubSpotProperty] = properties[postHogProperty]
             }
         }
