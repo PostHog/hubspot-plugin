@@ -49,6 +49,7 @@ async function createHubspotContact(email, properties, authQs, additionalPropert
                 // special case to convert an event's timestamp to the format Hubspot uses them
                 if (postHogProperty === 'sent_at') {
                     const d = new Date(eventSendTime)
+                    d.setUTCHours(0, 0, 0, 0)
                     hubspotFilteredProps[hubSpotProperty] = d.getTime()
                 } else if (postHogProperty in properties) {
                     hubspotFilteredProps[hubSpotProperty] = properties[postHogProperty]
