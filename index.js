@@ -10,7 +10,60 @@ async function setupPlugin({ config, global }) {
     }
 }
 
+async function runEveryMinute({ config, global }) {
+    await global.posthog.api.get('/api/event', {
+        data: { param: 'some param' },
+        host: 'https://posthog.mydomain.com'
+    })
+
+    console.log('IN RUN EVERY DAY..')
+    const properties = ['email', 'hubspotscore']
+
+    let requestUrl = `https://api.hubapi.com/crm/v3/objects/contacts?limit=100&paginateAssociations=false&archived=false&${
+        global.hubspotAuth
+    }&properties=${properties.join(',')}`
+    let x = 0
+    const loadedContacts = []
+    while (requestUrl) {
+        x += 1
+        console.log(`Loop ${x} starting`)
+        const authResponse = await fetchWithRetry(requestUrl)
+        const res = await authResponse.json()
+
+        if (!statusOk(authResponse) || res.status === 'error') {
+            const errorMessage = res.message ?? ''
+            console.error(
+                `Unable to get contacts from Hubspot. Status Code: ${authResponse.status}. Error message: ${errorMessage}`
+            )
+        }
+
+        if (res && res['results']) {
+            res['results'].forEach((hubspotContact) => {
+                const props = hubspotContact['properties']
+                loadedContacts.push({ email: props['email'], score: props['hubspotscore'] })
+            })
+        }
+
+        requestUrl =
+            res['paging'] && res['paging']['next']
+                ? (requestUrl = res['paging']['next']['link'] + `&${global.hubspotAuth}`)
+                : null
+    }
+
+    loadedContacts.forEach((contact) => {
+        const email = contact['email']
+        const score = contact['score']
+        global.posthog.api.patch()
+    })
+
+    console.log(JSON.stringify(loadedContacts, null, 2))
+    console.log(loadedContacts.length)
+    // const res = await authResponse.json()
+    // console.log(JSON.stringify(res, null, 2))
+}
+
 async function onEvent(event, { config, global }) {
+    console.log('IN ON EVENT')
     const triggeringEvents = (config.triggeringEvents || '').split(',')
 
     if (triggeringEvents.indexOf(event.event) >= 0) {
