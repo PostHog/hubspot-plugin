@@ -57,13 +57,14 @@ async function createHubspotContact(email, properties, authQs, additionalPropert
         }
     }
 
+    const createContactPayload = { properties: { email: email, ...hubspotFilteredProps } }
     const addContactResponse = await fetchWithRetry(
         `https://api.hubapi.com/crm/v3/objects/contacts?${authQs}`,
         {
             headers: {
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify({ properties: { email: email, ...hubspotFilteredProps } })
+            body: JSON.stringify(createContactPayload)
         },
         'POST'
     )
@@ -75,6 +76,8 @@ async function createHubspotContact(email, properties, authQs, additionalPropert
         console.log(
             `Unable to add contact ${email} to Hubspot. Status Code: ${addContactResponse.status}. Error message: ${errorMessage}`
         )
+    } else {
+        console.log(`Created Contact: ${JSON.stringify(createContactPayload, null, 2)}`)
     }
 }
 
