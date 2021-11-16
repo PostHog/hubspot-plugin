@@ -2,7 +2,7 @@
 
 Send contact data to Hubspot on PostHog `$identify` events.
 
-![](readme-assets/hubspot-data.png)
+![](https://github.com/PostHog/hubspot-plugin/raw/main/readme-assets/hubspot-data.png)
 
 Currently supported data:
 
