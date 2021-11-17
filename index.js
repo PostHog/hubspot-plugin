@@ -88,8 +88,9 @@ async function getHubspotContacts(global) {
     return loadedContacts
 }
 
-async function runEveryMinute({ config, global }) {
-    console.log('IN RUN EVERY DAY..')
+async function runEveryDay({ config, global }) {
+    console.log('Starting daily job...')
+
     if (!global.syncScoresIntoPosthog) {
         console.log('Not syncing Hubspot Scores into PostHog - config not set.')
         return
@@ -97,11 +98,13 @@ async function runEveryMinute({ config, global }) {
 
     const loadedContacts = await getHubspotContacts(global)
     let skipped = 0
-    console.log('Starting to process...')
     let num_updated = 0
     let num_processed = 0
+    let num_errors = 0
     for (const hubspotContact of loadedContacts) {
-        console.log(`Processed...${num_processed} Person updates`)
+        if (num_processed % 100 === 0) {
+            console.log(`Processed...${num_processed} Person updates`)
+        }
         const email = hubspotContact['email']
         const score = hubspotContact['score']
         try {
@@ -111,16 +114,17 @@ async function runEveryMinute({ config, global }) {
                 console.log(`Updated Person ${email} with score ${score}`)
             } else {
                 console.log(`Skipped update for ${email}`)
+                skipped += 1
             }
         } catch (error) {
             console.log(`Error updating Hubspot score for ${email} - Skipping`)
-            skipped += 1
+            num_errors += 1
         }
         num_processed += 1
     }
 
     console.log(
-        `Successfully updated Hubspot scores for ${num_updated} records, skipped ${skipped} records, processed ${loadedContacts.length} Hubspot Contacts `
+        `Successfully updated Hubspot scores for ${num_updated} records, skipped ${skipped} records, processed ${loadedContacts.length} Hubspot Contacts, errors: ${num_errors} `
     )
 }
 
