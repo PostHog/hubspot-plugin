@@ -1,5 +1,10 @@
 async function setupPlugin({ config, global }) {
     global.hubspotAuth = `hapikey=${config.hubspotApiKey}`
+    global.posthogUrl = config.postHogUrl
+    global.apiToken = config.postHogApiToken
+    global.projectToken = config.postHogProjectToken
+
+    global.syncScoresIntoPosthog = global.posthogUrl && global.apiToken && global.projectToken
 
     const authResponse = await fetchWithRetry(
         `https://api.hubapi.com/crm/v3/objects/contacts?limit=1&paginateAssociations=false&archived=false&${global.hubspotAuth}`
@@ -10,23 +15,53 @@ async function setupPlugin({ config, global }) {
     }
 }
 
-async function runEveryMinute({ config, global }) {
-    await global.posthog.api.get('/api/event', {
-        data: { param: 'some param' },
-        host: 'https://posthog.mydomain.com'
+async function updateHubspotScore(email, hubspotScore, global) {
+    let updated = false
+    const _userRes = await fetch(`${global.posthogUrl}/api/person/?token=${global.projectToken}&email=${email}`, {
+        method: 'GET',
+        headers: { Authorization: `Bearer ${global.apiToken}` }
     })
+    const userResponse = await _userRes.json()
 
-    console.log('IN RUN EVERY DAY..')
+    if (userResponse['results'] && userResponse['results'].length > 0) {
+        for (const loadedUser of userResponse['results']) {
+            const userId = loadedUser['id']
+            const currentProps = loadedUser['properties'] ?? {}
+            const updatedProps = { hubspot_score: hubspotScore, ...currentProps }
+
+            if (userId) {
+                const _updateRes = await fetch(
+                    `${global.posthogUrl}/api/person/${userId}/?token=${global.projectToken}`,
+                    {
+                        method: 'PATCH',
+                        headers: {
+                            Authorization: `Bearer ${global.apiToken}`,
+                            Accept: 'application/json',
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            properties: updatedProps
+                        })
+                    }
+                )
+                updated = true
+            }
+        }
+    }
+
+    return updated
+}
+
+async function getHubspotContacts(global) {
+    console.log('Loading Hubspot Contacts...')
     const properties = ['email', 'hubspotscore']
 
     let requestUrl = `https://api.hubapi.com/crm/v3/objects/contacts?limit=100&paginateAssociations=false&archived=false&${
         global.hubspotAuth
     }&properties=${properties.join(',')}`
-    let x = 0
+
     const loadedContacts = []
     while (requestUrl) {
-        x += 1
-        console.log(`Loop ${x} starting`)
         const authResponse = await fetchWithRetry(requestUrl)
         const res = await authResponse.json()
 
@@ -49,23 +84,48 @@ async function runEveryMinute({ config, global }) {
                 ? (requestUrl = res['paging']['next']['link'] + `&${global.hubspotAuth}`)
                 : null
     }
-
-    loadedContacts.forEach((contact) => {
-        const email = contact['email']
-        const score = contact['score']
-        global.posthog.api.patch()
-    })
-
-    console.log(JSON.stringify(loadedContacts, null, 2))
-    console.log(loadedContacts.length)
-    // const res = await authResponse.json()
-    // console.log(JSON.stringify(res, null, 2))
+    console.log(`Loaded ${loadedContacts.length} Contacts from Hubspot`)
+    return loadedContacts
 }
 
-async function onEvent(event, { config, global }) {
-    console.log('IN ON EVENT')
-    const triggeringEvents = (config.triggeringEvents || '').split(',')
+async function runEveryMinute({ config, global }) {
+    console.log('IN RUN EVERY DAY..')
+    if (!global.syncScoresIntoPosthog) {
+        console.log('Not syncing Hubspot Scores into PostHog - config not set.')
+        return
+    }
 
+    const loadedContacts = await getHubspotContacts(global)
+    let skipped = 0
+    console.log('Starting to process...')
+    let num_updated = 0
+    let num_processed = 0
+    for (const hubspotContact of loadedContacts) {
+        console.log(`Processed...${num_processed} Person updates`)
+        const email = hubspotContact['email']
+        const score = hubspotContact['score']
+        try {
+            const updated = await updateHubspotScore(email, score, global)
+            if (updated) {
+                num_updated += 1
+                console.log(`Updated Person ${email} with score ${score}`)
+            } else {
+                console.log(`Skipped update for ${email}`)
+            }
+        } catch (error) {
+            console.log(`Error updating Hubspot score for ${email} - Skipping`)
+            skipped += 1
+        }
+        num_processed += 1
+    }
+
+    console.log(
+        `Successfully updated Hubspot scores for ${num_updated} records, skipped ${skipped} records, processed ${loadedContacts.length} Hubspot Contacts `
+    )
+}
+
+async function onEvent(event, { config }) {
+    const triggeringEvents = (config.triggeringEvents || '').split(',')
     if (triggeringEvents.indexOf(event.event) >= 0) {
         const email = getEmailFromEvent(event)
         if (email) {
