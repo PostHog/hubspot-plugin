@@ -113,7 +113,6 @@ async function runEveryDay({ config, global }) {
                 num_updated += 1
                 console.log(`Updated Person ${email} with score ${score}`)
             } else {
-                console.log(`Skipped update for ${email}`)
                 skipped += 1
             }
         } catch (error) {
