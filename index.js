@@ -15,9 +15,120 @@ async function setupPlugin({ config, global }) {
     }
 }
 
+async function updateHubspotScore(email, hubspotScore, global) {
+    let updated = false
+    const _userRes = await fetch(`${global.posthogUrl}/api/person/?token=${global.projectToken}&email=${email}`, {
+        method: 'GET',
+        headers: { Authorization: `Bearer ${global.apiToken}` }
+    })
+    const userResponse = await _userRes.json()
+
+    if (userResponse['results'] && userResponse['results'].length > 0) {
+        for (const loadedUser of userResponse['results']) {
+            const userId = loadedUser['id']
+            const currentProps = loadedUser['properties'] ?? {}
+            const updatedProps = { hubspot_score: hubspotScore, ...currentProps }
+
+            if (userId) {
+                const _updateRes = await fetch(
+                    `${global.posthogUrl}/api/person/${userId}/?token=${global.projectToken}`,
+                    {
+                        method: 'PATCH',
+                        headers: {
+                            Authorization: `Bearer ${global.apiToken}`,
+                            Accept: 'application/json',
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            properties: updatedProps
+                        })
+                    }
+                )
+                updated = true
+            }
+        }
+    }
+
+    return updated
+}
+
+async function getHubspotContacts(global) {
+    console.log('Loading Hubspot Contacts...')
+    const properties = ['email', 'hubspotscore']
+
+    let requestUrl = `https://api.hubapi.com/crm/v3/objects/contacts?limit=100&paginateAssociations=false&archived=false&${
+        global.hubspotAuth
+    }&properties=${properties.join(',')}`
+
+    const loadedContacts = []
+    while (requestUrl) {
+        const authResponse = await fetchWithRetry(requestUrl)
+        const res = await authResponse.json()
+
+        if (!statusOk(authResponse) || res.status === 'error') {
+            const errorMessage = res.message ?? ''
+            console.error(
+                `Unable to get contacts from Hubspot. Status Code: ${authResponse.status}. Error message: ${errorMessage}`
+            )
+        }
+
+        if (res && res['results']) {
+            res['results'].forEach((hubspotContact) => {
+                const props = hubspotContact['properties']
+                loadedContacts.push({ email: props['email'], score: props['hubspotscore'] })
+            })
+        }
+
+        requestUrl =
+            res['paging'] && res['paging']['next']
+                ? (requestUrl = res['paging']['next']['link'] + `&${global.hubspotAuth}`)
+                : null
+    }
+    console.log(`Loaded ${loadedContacts.length} Contacts from Hubspot`)
+    return loadedContacts
+}
+
+async function runEveryDay({ config, global }) {
+    console.log('Starting daily job...')
+
+    if (!global.syncScoresIntoPosthog) {
+        console.log('Not syncing Hubspot Scores into PostHog - config not set.')
+        return
+    }
+
+    const loadedContacts = await getHubspotContacts(global)
+    let skipped = 0
+    let num_updated = 0
+    let num_processed = 0
+    let num_errors = 0
+    for (const hubspotContact of loadedContacts) {
+        if (num_processed % 100 === 0) {
+            console.log(`Processed...${num_processed} Person updates`)
+        }
+        const email = hubspotContact['email']
+        const score = hubspotContact['score']
+        try {
+            const updated = await updateHubspotScore(email, score, global)
+            if (updated) {
+                num_updated += 1
+                console.log(`Updated Person ${email} with score ${score}`)
+            } else {
+                skipped += 1
+            }
+        } catch (error) {
+            console.log(`Error updating Hubspot score for ${email} - Skipping`)
+            num_errors += 1
+        }
+        num_processed += 1
+    }
+
+    console.log(
+        `Successfully updated Hubspot scores for ${num_updated} records, skipped ${skipped} records, processed ${loadedContacts.length} Hubspot Contacts, errors: ${num_errors} `
+    )
+}
+
 async function onEvent(event, { config, global }) {
     const triggeringEvents = (config.triggeringEvents || '').split(',')
-
     if (triggeringEvents.indexOf(event.event) >= 0) {
         const email = getEmailFromEvent(event)
         if (email) {
@@ -63,14 +174,13 @@ async function createHubspotContact(email, properties, authQs, additionalPropert
         }
     }
 
-    const createContactPayload = { properties: { email: email, ...hubspotFilteredProps } }
     const addContactResponse = await fetchWithRetry(
         `https://api.hubapi.com/crm/v3/objects/contacts?${authQs}`,
         {
             headers: {
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify(createContactPayload)
+            body: JSON.stringify({ properties: { email: email, ...hubspotFilteredProps } })
         },
         'POST'
     )
@@ -82,8 +192,6 @@ async function createHubspotContact(email, properties, authQs, additionalPropert
         console.log(
             `Unable to add contact ${email} to Hubspot. Status Code: ${addContactResponse.status}. Error message: ${errorMessage}`
         )
-    } else {
-        console.log(`Created Contact: ${JSON.stringify(createContactPayload, null, 2)}`)
     }
 }
 
