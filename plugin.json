@@ -35,30 +35,6 @@
             "type": "string",
             "default": "",
             "required": false
-        },
-        {
-            "key": "postHogUrl",
-            "hint": "The PostHog instance URL you want Hubspot Scores synced into. Required to sync Hubspot contact scores into PostHog Persons.",
-            "name": "Hubspot Score PostHog Instance",
-            "type": "string",
-            "default": "https://app.posthog.com",
-            "required": false
-        },
-        {
-            "key": "postHogApiToken",
-            "hint": "A personal API key created from the 'My Account' menu. Required to sync Hubspot Scores into PostHog.",
-            "name": "PostHog API Access Key",
-            "type": "string",
-            "default": "",
-            "required": false
-        },
-        {
-            "key": "postHogProjectToken",
-            "hint": "The project you want to sync Hubspot Scores into. Can be found in Project Settings. Required to sync Hubspot Scores into PostHog.",
-            "name": "PostHog Project Token",
-            "type": "string",
-            "default": "",
-            "required": false
         }
     ]
 }
