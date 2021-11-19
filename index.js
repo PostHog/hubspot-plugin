@@ -127,7 +127,7 @@ async function runEveryDay({ config, global }) {
     )
 }
 
-async function onEvent(event, { config }) {
+async function onEvent(event, { config, global }) {
     const triggeringEvents = (config.triggeringEvents || '').split(',')
     if (triggeringEvents.indexOf(event.event) >= 0) {
         const email = getEmailFromEvent(event)
