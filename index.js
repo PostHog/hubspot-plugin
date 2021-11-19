@@ -192,6 +192,8 @@ async function createHubspotContact(email, properties, authQs, additionalPropert
         console.log(
             `Unable to add contact ${email} to Hubspot. Status Code: ${addContactResponse.status}. Error message: ${errorMessage}`
         )
+    } else {
+        console.log(`Created Hubspot Contact for ${email}`)
     }
 }
 
