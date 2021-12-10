@@ -213,7 +213,7 @@ async function createHubspotContact(email, properties, authQs, additionalPropert
                     `Unable to update contact ${email} to Hubspot. Status Code: ${updateContactResponse.status}. Error message: ${errorMessage}`
                 )
             } else {
-                console.log(`Successfully updated ${email}`)
+                console.log(`Successfully updated Hubspot Contact for ${email}`)
             }
         }
     } else {
