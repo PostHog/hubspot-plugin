@@ -192,6 +192,30 @@ async function createHubspotContact(email, properties, authQs, additionalPropert
         console.log(
             `Unable to add contact ${email} to Hubspot. Status Code: ${addContactResponse.status}. Error message: ${errorMessage}`
         )
+        if (addContactResponse.status === 409) {
+            console.log(`Attempting to update contact ${email} instead...`)
+
+            const updateContactResponse = await fetchWithRetry(
+                `https://api.hubapi.com/crm/v3/objects/contacts?${authQs}`,
+                {
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ properties: { email: email, ...hubspotFilteredProps } })
+                },
+                'PATCH'
+            )
+
+            const updateResponseJson = await updateContactResponse.json()
+            if (!statusOk(updateContactResponse)) {
+                const errorMessage = updateResponseJson.message ?? ''
+                console.log(
+                    `Unable to update contact ${email} to Hubspot. Status Code: ${updateContactResponse.status}. Error message: ${errorMessage}`
+                )
+            } else {
+                console.log(`Successfully updated Hubspot Contact for ${email}`)
+            }
+        }
     } else {
         console.log(`Created Hubspot Contact for ${email}`)
     }
