@@ -88,8 +88,9 @@ async function getHubspotContacts(global) {
     return loadedContacts
 }
 
-async function runEveryDay({ config, global }) {
-    console.log('Starting daily job...')
+async function runEveryHour({ config, global }) {
+    console.log('Starting Hourly score sync job...')
+    posthog.capture('hubspot daily sync started')
 
     if (!global.syncScoresIntoPosthog) {
         console.log('Not syncing Hubspot Scores into PostHog - config not set.')
@@ -112,6 +113,7 @@ async function runEveryDay({ config, global }) {
             if (updated) {
                 num_updated += 1
                 console.log(`Updated Person ${email} with score ${score}`)
+                posthog.capture('hubspot score updated', { distinct_id: email, hubspot_score: score })
             } else {
                 skipped += 1
             }
@@ -121,7 +123,7 @@ async function runEveryDay({ config, global }) {
         }
         num_processed += 1
     }
-
+    posthog.capture('hubspot daily sync completed', { num_updated: num_updated })
     console.log(
         `Successfully updated Hubspot scores for ${num_updated} records, skipped ${skipped} records, processed ${loadedContacts.length} Hubspot Contacts, errors: ${num_errors} `
     )
