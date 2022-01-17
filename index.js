@@ -52,60 +52,66 @@ async function updateHubspotScore(email, hubspotScore, global) {
     return updated
 }
 
-async function getHubspotContacts(global) {
+async function getHubspotContacts(global, storage) {
     console.log('Loading Hubspot Contacts...')
     const properties = ['email', 'hubspotscore']
 
-    let requestUrl = `https://api.hubapi.com/crm/v3/objects/contacts?limit=100&paginateAssociations=false&archived=false&${
-        global.hubspotAuth
-    }&properties=${properties.join(',')}`
+    let requestUrl = await storage.get(NEXT_CONTACT_BATCH_KEY)
+
+    if (!requestUrl) {
+        // start fresh - begin processing all contacts
+        requestUrl = `https://api.hubapi.com/crm/v3/objects/contacts?limit=100&paginateAssociations=false&archived=false&${
+            global.hubspotAuth
+        }&properties=${properties.join(',')}`
+    }
 
     const loadedContacts = []
-    while (requestUrl) {
-        const authResponse = await fetchWithRetry(requestUrl)
-        const res = await authResponse.json()
 
-        if (!statusOk(authResponse) || res.status === 'error') {
-            const errorMessage = res.message ?? ''
-            console.error(
-                `Unable to get contacts from Hubspot. Status Code: ${authResponse.status}. Error message: ${errorMessage}`
-            )
-        }
+    const authResponse = await fetchWithRetry(requestUrl)
+    const res = await authResponse.json()
 
-        if (res && res['results']) {
-            res['results'].forEach((hubspotContact) => {
-                const props = hubspotContact['properties']
-                loadedContacts.push({ email: props['email'], score: props['hubspotscore'] })
-            })
-        }
-
-        requestUrl =
-            res['paging'] && res['paging']['next']
-                ? (requestUrl = res['paging']['next']['link'] + `&${global.hubspotAuth}`)
-                : null
+    if (!statusOk(authResponse) || res.status === 'error') {
+        const errorMessage = res.message ?? ''
+        console.error(
+            `Unable to get contacts from Hubspot. Status Code: ${authResponse.status}. Error message: ${errorMessage}`
+        )
     }
+
+    if (res && res['results']) {
+        res['results'].forEach((hubspotContact) => {
+            const props = hubspotContact['properties']
+            loadedContacts.push({ email: props['email'], score: props['hubspotscore'] })
+        })
+    }
+
+    let nextContactBatch
+    res['paging'] && res['paging']['next']
+        ? (nextContactBatch = res['paging']['next']['link'] + `&${global.hubspotAuth}`)
+        : null
+
+    await storage.set(NEXT_CONTACT_BATCH_KEY, nextContactBatch)
     console.log(`Loaded ${loadedContacts.length} Contacts from Hubspot`)
     return loadedContacts
 }
 
-async function runEveryHour({ config, global }) {
-    console.log('Starting Hourly score sync job...')
-    posthog.capture('hubspot daily sync started')
+const NEXT_CONTACT_BATCH_KEY = 'next_hubspot_contacts_url'
+
+async function runEveryMinute({ config, global, storage }) {
+    console.log('Starting score sync job...')
+    posthog.capture('hubspot score sync started')
 
     if (!global.syncScoresIntoPosthog) {
         console.log('Not syncing Hubspot Scores into PostHog - config not set.')
         return
     }
 
-    const loadedContacts = await getHubspotContacts(global)
+    const loadedContacts = await getHubspotContacts(global, storage)
     let skipped = 0
     let num_updated = 0
     let num_processed = 0
     let num_errors = 0
     for (const hubspotContact of loadedContacts) {
-        if (num_processed % 100 === 0) {
-            console.log(`Processed...${num_processed} Person updates`)
-        }
+        console.log(`Processed...${num_processed} Person updates`)
         const email = hubspotContact['email']
         const score = hubspotContact['score']
         try {
@@ -123,10 +129,16 @@ async function runEveryHour({ config, global }) {
         }
         num_processed += 1
     }
-    posthog.capture('hubspot daily sync completed', { num_updated: num_updated })
+
     console.log(
         `Successfully updated Hubspot scores for ${num_updated} records, skipped ${skipped} records, processed ${loadedContacts.length} Hubspot Contacts, errors: ${num_errors} `
     )
+    const nextContactBatch = await storage.get(NEXT_CONTACT_BATCH_KEY)
+    if (!nextContactBatch) {
+        posthog.capture('hubspot contact sync all contacts completed', { num_updated: num_updated })
+    } else {
+        posthog.capture('hubspot contact sync batch completed', { num_updated: num_updated })
+    }
 }
 
 async function onEvent(event, { config, global }) {
