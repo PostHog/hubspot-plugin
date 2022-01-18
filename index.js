@@ -59,6 +59,13 @@ async function getHubspotContacts(global, storage) {
     let requestUrl = await storage.get(NEXT_CONTACT_BATCH_KEY)
 
     if (!requestUrl) {
+        const lastFinishDate = await storage.get(SYNC_LAST_COMPLETED_DATE_KEY)
+        const dateObj = new Date()
+        const todayStr = `${dateObj.getUTCFullYear()}-${dateObj.getUTCMonth()}-${dateObj.getUTCDate()}`
+        if (todayStr === lastFinishDate) {
+            console.log(`Not syncing contacts - sync already completed for ${todayStr}`)
+            return
+        }
         // start fresh - begin processing all contacts
         requestUrl = `https://api.hubapi.com/crm/v3/objects/contacts?limit=100&paginateAssociations=false&archived=false&${
             global.hubspotAuth
@@ -95,6 +102,7 @@ async function getHubspotContacts(global, storage) {
 }
 
 const NEXT_CONTACT_BATCH_KEY = 'next_hubspot_contacts_url'
+const SYNC_LAST_COMPLETED_DATE_KEY = 'last_job_complete_day'
 
 async function runEveryMinute({ config, global, storage }) {
     console.log('Starting score sync job...')
@@ -136,6 +144,11 @@ async function runEveryMinute({ config, global, storage }) {
     const nextContactBatch = await storage.get(NEXT_CONTACT_BATCH_KEY)
     if (!nextContactBatch) {
         posthog.capture('hubspot contact sync all contacts completed', { num_updated: num_updated })
+        const dateObj = new Date()
+        await storage.set(
+            SYNC_LAST_COMPLETED_DATE_KEY,
+            `${dateObj.getUTCFullYear()}-${dateObj.getUTCMonth()}-${dateObj.getUTCDate()}`
+        )
     } else {
         posthog.capture('hubspot contact sync batch completed', { num_updated: num_updated })
     }
