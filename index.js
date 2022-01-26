@@ -194,7 +194,12 @@ async function createHubspotContact(email, properties, authQs, additionalPropert
                     const d = new Date(eventSendTime)
                     d.setUTCHours(0, 0, 0, 0)
                     hubspotFilteredProps[hubSpotProperty] = d.getTime()
-                } else if (postHogProperty in properties) {
+                } else if(postHogProperty === 'created_at'){
+                    //TODO: This logic needs to be applied for all date type fileds.  
+                    const d = new Date(properties[postHogProperty])
+                    d.setUTCHours(0, 0, 0, 0)
+                    hubspotFilteredProps[hubSpotProperty] = d.getTime()
+                }else if (postHogProperty in properties) {
                     hubspotFilteredProps[hubSpotProperty] = properties[postHogProperty]
                 }
             }
