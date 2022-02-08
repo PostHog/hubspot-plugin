@@ -27,7 +27,7 @@ async function updateHubspotScore(email, hubspotScore, global) {
         for (const loadedUser of userResponse['results']) {
             const userId = loadedUser['id']
             const currentProps = loadedUser['properties'] ?? {}
-            const updatedProps = { hubspot_score: parseInt(hubspotScore), ...currentProps }
+            const updatedProps = { hubspot_score: parseInt(hubspotScore, 10), ...currentProps }
 
             if (userId) {
                 const _updateRes = await fetch(
