@@ -57,22 +57,20 @@ async function getHubspotContacts(global, storage) {
     const properties = ['email', 'hubspotscore']
 
     let requestUrl = await storage.get(NEXT_CONTACT_BATCH_KEY)
-
+    const loadedContacts = []
     if (!requestUrl) {
         const lastFinishDate = await storage.get(SYNC_LAST_COMPLETED_DATE_KEY)
         const dateObj = new Date()
         const todayStr = `${dateObj.getUTCFullYear()}-${dateObj.getUTCMonth()}-${dateObj.getUTCDate()}`
         if (todayStr === lastFinishDate) {
             console.log(`Not syncing contacts - sync already completed for ${todayStr}`)
-            return
+            return loadedContacts
         }
         // start fresh - begin processing all contacts
         requestUrl = `https://api.hubapi.com/crm/v3/objects/contacts?limit=100&paginateAssociations=false&archived=false&${
             global.hubspotAuth
         }&properties=${properties.join(',')}`
     }
-
-    const loadedContacts = []
 
     const authResponse = await fetchWithRetry(requestUrl)
     const res = await authResponse.json()
