@@ -64,7 +64,7 @@ async function getHubspotContacts(global, storage) {
         const todayStr = `${dateObj.getUTCFullYear()}-${dateObj.getUTCMonth()}-${dateObj.getUTCDate()}`
         if (todayStr === lastFinishDate) {
             console.log(`Not syncing contacts - sync already completed for ${todayStr}`)
-            return
+            return []
         }
         // start fresh - begin processing all contacts
         requestUrl = `https://api.hubapi.com/crm/v3/objects/contacts?limit=100&paginateAssociations=false&archived=false&${
@@ -110,7 +110,6 @@ async function runEveryMinute({ config, global, storage }) {
 
     if (!global.syncScoresIntoPosthog) {
         console.log('Not syncing Hubspot Scores into PostHog - config not set.')
-        return []
     }
 
     const loadedContacts = await getHubspotContacts(global, storage)
