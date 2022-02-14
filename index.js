@@ -110,7 +110,7 @@ async function runEveryMinute({ config, global, storage }) {
 
     if (!global.syncScoresIntoPosthog) {
         console.log('Not syncing Hubspot Scores into PostHog - config not set.')
-        return
+        return []
     }
 
     const loadedContacts = await getHubspotContacts(global, storage)
