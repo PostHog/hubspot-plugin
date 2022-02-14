@@ -19,7 +19,7 @@ async function updateHubspotScore(email, hubspotScore, global) {
     let updated = false
     const _userRes = await fetch(`${global.posthogUrl}/api/person/?token=${global.projectToken}&email=${email}`, {
         method: 'GET',
-        headers: { Authorization: `Bearer ${global.apiToken}` }
+        headers: { Authorization: `Bearer ${global.apiToken}` },
     })
     const userResponse = await _userRes.json()
 
@@ -37,11 +37,11 @@ async function updateHubspotScore(email, hubspotScore, global) {
                         headers: {
                             Authorization: `Bearer ${global.apiToken}`,
                             Accept: 'application/json',
-                            'Content-Type': 'application/json'
+                            'Content-Type': 'application/json',
                         },
                         body: JSON.stringify({
-                            properties: updatedProps
-                        })
+                            properties: updatedProps,
+                        }),
                     }
                 )
                 updated = true
@@ -167,7 +167,7 @@ async function onEvent(event, { config, global }) {
                 email,
                 {
                     ...(event['$set'] ?? {}),
-                    ...(event['properties'] ?? {})
+                    ...(event['properties'] ?? {}),
                 },
                 global.hubspotAuth,
                 config.additionalPropertyMappings,
@@ -205,9 +205,9 @@ async function createHubspotContact(email, properties, authQs, additionalPropert
         `https://api.hubapi.com/crm/v3/objects/contacts?${authQs}`,
         {
             headers: {
-                'Content-Type': 'application/json'
+                'Content-Type': 'application/json',
             },
-            body: JSON.stringify({ properties: { email: email, ...hubspotFilteredProps } })
+            body: JSON.stringify({ properties: { email: email, ...hubspotFilteredProps } }),
         },
         'POST'
     )
@@ -220,15 +220,17 @@ async function createHubspotContact(email, properties, authQs, additionalPropert
             `Unable to add contact ${email} to Hubspot. Status Code: ${addContactResponse.status}. Error message: ${errorMessage}`
         )
         if (addContactResponse.status === 409) {
+            const existingIdRegex = /Existing ID: ([0-9]+)/
+            const existingId = addContactResponseJson.message.match(existingIdRegex)
             console.log(`Attempting to update contact ${email} instead...`)
 
             const updateContactResponse = await fetchWithRetry(
-                `https://api.hubapi.com/crm/v3/objects/contacts?${authQs}`,
+                `https://api.hubapi.com/crm/v3/objects/contacts/${existingId[1]}?${authQs}`,
                 {
                     headers: {
-                        'Content-Type': 'application/json'
+                        'Content-Type': 'application/json',
                     },
-                    body: JSON.stringify({ properties: { email: email, ...hubspotFilteredProps } })
+                    body: JSON.stringify({ properties: { email: email, ...hubspotFilteredProps } }),
                 },
                 'PATCH'
             )
@@ -266,7 +268,8 @@ function statusOk(res) {
 }
 
 function isEmail(email) {
-    const re = /^(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/
+    const re =
+        /^(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/
     return re.test(String(email).toLowerCase())
 }
 
@@ -302,5 +305,5 @@ const hubspotPropsMap = {
     website: 'website',
     domain: 'website',
     company_website: 'website',
-    companyWebsite: 'website'
+    companyWebsite: 'website',
 }
