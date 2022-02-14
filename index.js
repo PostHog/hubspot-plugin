@@ -57,7 +57,6 @@ async function getHubspotContacts(global, storage) {
     const properties = ['email', 'hubspotscore']
 
     let requestUrl = await storage.get(NEXT_CONTACT_BATCH_KEY)
-
     if (!requestUrl) {
         const lastFinishDate = await storage.get(SYNC_LAST_COMPLETED_DATE_KEY)
         const dateObj = new Date()
@@ -72,9 +71,10 @@ async function getHubspotContacts(global, storage) {
         }&properties=${properties.join(',')}`
     }
 
+    const loadedContacts = []
     const authResponse = await fetchWithRetry(requestUrl)
     const res = await authResponse.json()
-    const loadedContacts = []
+
     if (!statusOk(authResponse) || res.status === 'error') {
         const errorMessage = res.message ?? ''
         console.error(
