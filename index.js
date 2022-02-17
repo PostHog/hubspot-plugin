@@ -187,7 +187,7 @@ async function createHubspotContact(email, properties, authQs, additionalPropert
             const [postHogProperty, hubSpotProperty] = mapping.split(':')
             if (postHogProperty && hubSpotProperty) {
                 // special case to convert an event's timestamp to the format Hubspot uses them
-                if (postHogProperty === 'sent_at') {
+                if (postHogProperty === 'sent_at' || postHogProperty === 'created_at') {
                     const d = new Date(eventSendTime)
                     d.setUTCHours(0, 0, 0, 0)
                     hubspotFilteredProps[hubSpotProperty] = d.getTime()
