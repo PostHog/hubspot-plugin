@@ -168,13 +168,14 @@ async function onEvent(event, { config, global }) {
                 },
                 global.hubspotAuth,
                 config.additionalPropertyMappings,
+                config.createOnlyProperties,
                 event['sent_at']
             )
         }
     }
 }
 
-async function createHubspotContact(email, properties, authQs, additionalPropertyMappings, eventSendTime) {
+async function createHubspotContact(email, properties, authQs, additionalPropertyMappings, createOnlyProperties, eventSendTime) {
     let hubspotFilteredProps = {}
     for (const [key, val] of Object.entries(properties)) {
         if (hubspotPropsMap[key]) {
@@ -220,6 +221,12 @@ async function createHubspotContact(email, properties, authQs, additionalPropert
             const existingIdRegex = /Existing ID: ([0-9]+)/
             const existingId = addContactResponseJson.message.match(existingIdRegex)
             console.log(`Attempting to update contact ${email} instead...`)
+            
+            if(createOnlyProperties){
+                for (createOnlyProperty of createOnlyProperties.split(',')){
+                    delete hubspotFilteredProps[createOnlyProperty]
+                }
+            }
 
             const updateContactResponse = await fetchWithRetry(
                 `https://api.hubapi.com/crm/v3/objects/contacts/${existingId[1]}?${authQs}`,
