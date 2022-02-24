@@ -52,11 +52,6 @@ async function updateHubspotScore(email, hubspotScore, global) {
     return updated
 }
 
-function getCurrentDateStr() {
-    const dateObj = new Date();
-    return `${dateObj.getUTCFullYear()}-${dateObj.getUTCMonth()}-${dateObj.getUTCDate()}`
-}
-
 async function getHubspotContacts(global, storage) {
     console.log('Loading Hubspot Contacts...')
     const properties = ['email', 'hubspotscore']
@@ -64,8 +59,10 @@ async function getHubspotContacts(global, storage) {
     let requestUrl = await storage.get(NEXT_CONTACT_BATCH_KEY)
     if (!requestUrl) {
         const lastFinishDate = await storage.get(SYNC_LAST_COMPLETED_DATE_KEY)
-        if (getCurrentDateStr() === lastFinishDate) {
-            console.log(`Not syncing contacts - sync already completed. Today: ${getCurrentDateStr()}, Last run: ${lastFinishDate}`)
+        const dateObj = new Date()
+        const todayStr = `${dateObj.getUTCFullYear()}-${dateObj.getUTCMonth()}-${dateObj.getUTCDate()}`
+        if (todayStr === lastFinishDate) {
+            console.log(`Not syncing contacts - sync already completed for ${todayStr}`)
             return []
         }
         // start fresh - begin processing all contacts
@@ -147,7 +144,7 @@ async function runEveryMinute({ config, global, storage }) {
         const dateObj = new Date()
         await storage.set(
             SYNC_LAST_COMPLETED_DATE_KEY,
-            getCurrentDateStr()
+            `${dateObj.getUTCFullYear()}-${dateObj.getUTCMonth()}-${dateObj.getUTCDate()}`
         )
     } else {
         posthog.capture('hubspot contact sync batch completed', { num_updated: num_updated })
