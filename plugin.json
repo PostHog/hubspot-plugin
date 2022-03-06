@@ -59,6 +59,22 @@
             "type": "string",
             "default": "",
             "required": false
+        },
+        {
+            "key": "companiesGroupType",
+            "hint": "Group type that you want to enrich with hubspot companies",
+            "name": "Company Group Type",
+            "type": "string",
+            "default": null,
+            "required": false
+        },
+        {
+            "key": "dealsGroupType",
+            "hint": "Group type that you want to enrich with hubspot deals",
+            "name": "Deal Group Type",
+            "type": "string",
+            "default": null,
+            "required": false
         }
     ]
 }
