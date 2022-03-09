@@ -52,9 +52,10 @@ async function updateHubspotScore(email, hubspotScore, global) {
     return updated
 }
 
-async function getHubspotContacts(global, storage) {
+async function getHubspotContacts(config, global, storage) {
     console.log('Loading Hubspot Contacts...')
     const properties = ['email', 'hubspotscore', 'company', 'firstname', 'lastname', 'phone', 'address', 'city', 'state', 'zip', 'country', 'website']
+    const associations = ['companies']
 
     let requestUrl = await storage.get(NEXT_CONTACT_BATCH_KEY)
     if (!requestUrl) {
@@ -68,7 +69,7 @@ async function getHubspotContacts(global, storage) {
         // start fresh - begin processing all contacts
         requestUrl = `https://api.hubapi.com/crm/v3/objects/contacts?limit=100&paginateAssociations=false&archived=false&${
             global.hubspotAuth
-        }&properties=${properties.join(',')}`
+        }&properties=${properties.join(',')}&associations=${associations.join(',')}`
     }
 
     const loadedContacts = []
@@ -102,6 +103,15 @@ async function getHubspotContacts(global, storage) {
                     "hubspot_website": props['website'],
                 }
             })
+            // set related company group
+            if(hubspotContact['associations'] && hubspotContact['associations']['companies']){
+                hubspotContact['associations']['companies']["results"].forEach(company => {
+                    posthog.capture("$groupidentify", {
+                        "distinct_id": props["email"],
+                        "$groups": {[config.companiesGroupType]: company['id']}
+                    })
+                })
+            }
         })
     }
 
@@ -125,9 +135,10 @@ async function fetchAllDeals(config, global, storage){
         console.log("No deals group type defined. Skipping fetching deals")
         return
     }
+    const associations = ['companies']
     let requestUrl = await storage.get(NEXT_DEAL_BATCH_KEY)
     if(!requestUrl){
-        requestUrl = `https://api.hubapi.com/crm/v3/objects/deals?limit=100&archived=false&${global.hubspotAuth}`
+        requestUrl = `https://api.hubapi.com/crm/v3/objects/deals?limit=100&paginateAssociations=false&archived=false&${global.hubspotAuth}&associations=${associations.join(',')}`
     }
     const authResponse = await fetchWithRetry(requestUrl)
     const res = await authResponse.json()
@@ -145,14 +156,26 @@ async function fetchAllDeals(config, global, storage){
                 console.log(`Found new deal: ${hubspotDeal['id']}`)
             }else{
                 console.log(`Deal ${hubspotDeal['id']} already exists`)
-                break
+                continue
             }
             const props = hubspotDeal['properties']
+            props['name'] = props['dealname']  // set name to dealname so that it doesn't show deal id in the groups list
             posthog.capture('$groupidentify', {
                 '$group_type': config.dealsGroupType,
                 '$group_key': hubspotDeal["id"],
                 '$group_set':  props,
             })
+            // set related company group
+            if(hubspotDeal['associations'] && hubspotDeal['associations']['companies']){
+                hubspotDeal['associations']['companies']['results'].forEach(company => {
+                    posthog.capture("$groupidentify", {
+                        "$groups": {
+                            [config.companiesGroupType]: company['id'],
+                            [config.dealsGroupType]: hubspotDeal['id']
+                        }
+                    })
+                })
+            }
         }
     }
     let nextDealBatch
@@ -171,7 +194,8 @@ async function fetchAllCompanies(config, global, storage){
     const properties = ['name','hubspotscore','city',
         'state','zip','country','website',
         'industry','total_revenue','total_money_raised',
-        'hs_num_open_deals','hs_total_deal_value','num_associated_deals']
+        'hs_num_open_deals','hs_total_deal_value','num_associated_deals',
+        'annualrevenue', 'numberofemployees']
     if(!requestUrl){
         requestUrl = `https://api.hubapi.com/crm/v3/objects/companies?limit=100&archived=false&${
             global.hubspotAuth
@@ -193,7 +217,7 @@ async function fetchAllCompanies(config, global, storage){
                 console.log(`Found new company: ${hubspotCompany['id']}`)
             }else{
                 console.log(`Company ${hubspotCompany['id']} already exists`)
-                break
+                continue
             }
             const props = hubspotCompany['properties']
             posthog.capture('$groupidentify', {
@@ -212,10 +236,11 @@ async function fetchAllCompanies(config, global, storage){
 
 
 async function runEveryMinute({ config, global, storage }) {
-    console.log("fetching hunspot deals")
-    await fetchAllDeals(config, global, storage)
     console.log("fetching hunspot companies")
     await fetchAllCompanies(config, global, storage)
+    
+    console.log("fetching hunspot deals")
+    await fetchAllDeals(config, global, storage)
 
     console.log('Starting score sync job...')
     posthog.capture('hubspot score sync started')
@@ -224,7 +249,7 @@ async function runEveryMinute({ config, global, storage }) {
         console.log('Not syncing Hubspot Scores into PostHog - config not set.')
     }
 
-    const loadedContacts = await getHubspotContacts(global, storage)
+    const loadedContacts = await getHubspotContacts(config, global, storage)
     let skipped = 0
     let num_updated = 0
     let num_processed = 0
