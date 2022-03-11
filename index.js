@@ -19,7 +19,7 @@ async function updateHubspotScore(email, hubspotScore, global) {
     let updated = false
     const _userRes = await fetch(`${global.posthogUrl}/api/person/?token=${global.projectToken}&email=${email}`, {
         method: 'GET',
-        headers: { Authorization: `Bearer ${global.apiToken}` },
+        headers: { Authorization: `Bearer ${global.apiToken}` }
     })
     const userResponse = await _userRes.json()
 
@@ -37,11 +37,11 @@ async function updateHubspotScore(email, hubspotScore, global) {
                         headers: {
                             Authorization: `Bearer ${global.apiToken}`,
                             Accept: 'application/json',
-                            'Content-Type': 'application/json',
+                            'Content-Type': 'application/json'
                         },
                         body: JSON.stringify({
-                            properties: updatedProps,
-                        }),
+                            properties: updatedProps
+                        })
                     }
                 )
                 updated = true
@@ -54,7 +54,20 @@ async function updateHubspotScore(email, hubspotScore, global) {
 
 async function getHubspotContacts(config, global, storage) {
     console.log('Loading Hubspot Contacts...')
-    const properties = ['email', 'hubspotscore', 'company', 'firstname', 'lastname', 'phone', 'address', 'city', 'state', 'zip', 'country', 'website']
+    const properties = [
+        'email',
+        'hubspotscore',
+        'company',
+        'firstname',
+        'lastname',
+        'phone',
+        'address',
+        'city',
+        'state',
+        'zip',
+        'country',
+        'website'
+    ]
     const associations = ['companies']
 
     let requestUrl = await storage.get(NEXT_CONTACT_BATCH_KEY)
@@ -87,28 +100,32 @@ async function getHubspotContacts(config, global, storage) {
         res['results'].forEach((hubspotContact) => {
             const props = hubspotContact['properties']
             loadedContacts.push({ email: props['email'], score: props['hubspotscore'] })
-            posthog.capture("hubspot_contact", {
-                "distinct_id": props["email"],
-                $set:{
-                    "email": props["email"],  // update email so that it don't show random name when user not exists
-                    "hubspot_company": props['company'],
-                    "hubspot_firstname": props['firstname'],
-                    "hubspot_lastname": props['lastname'],
-                    "hubspot_phone": props['phone'],
-                    "hubspot_address": props['address'],
-                    "hubspot_city": props['city'],
-                    "hubspot_state": props['state'],
-                    "hubspot_zip": props['zip'],
-                    "hubspot_country": props['country'],
-                    "hubspot_website": props['website'],
+            posthog.capture('hubspot_contact', {
+                distinct_id: props['email'],
+                $set: {
+                    email: props['email'], // update email so that it don't show random name when user not exists
+                    hubspot_company: props['company'],
+                    hubspot_firstname: props['firstname'],
+                    hubspot_lastname: props['lastname'],
+                    hubspot_phone: props['phone'],
+                    hubspot_address: props['address'],
+                    hubspot_city: props['city'],
+                    hubspot_state: props['state'],
+                    hubspot_zip: props['zip'],
+                    hubspot_country: props['country'],
+                    hubspot_website: props['website']
                 }
             })
             // set related company group
-            if(hubspotContact['associations'] && hubspotContact['associations']['companies']){
-                hubspotContact['associations']['companies']["results"].forEach(company => {
-                    posthog.capture("$groupidentify", {
-                        "distinct_id": props["email"],
-                        "$groups": {[config.companiesGroupType]: company['id']}
+            if (
+                config.companiesGroupType &&
+                hubspotContact['associations'] &&
+                hubspotContact['associations']['companies']
+            ) {
+                hubspotContact['associations']['companies']['results'].forEach((company) => {
+                    posthog.capture('$groupidentify', {
+                        distinct_id: props['email'],
+                        $groups: { [config.companiesGroupType]: company['id'] }
                     })
                 })
             }
@@ -130,46 +147,48 @@ const SYNC_LAST_COMPLETED_DATE_KEY = 'last_job_complete_day'
 const NEXT_DEAL_BATCH_KEY = 'next_hubspot_deals_url'
 const NEXT_COMPANY_BATCH_KEY = 'next_hubspot_companies_url'
 
-async function fetchAllDeals(config, global, storage){
-    if (!config.dealsGroupType){
-        console.log("No deals group type defined. Skipping fetching deals")
-        return
+async function fetchAllDeals(config, global, storage) {
+    if (!config.dealsGroupType) {
+        console.log('No deals group type defined. Skipping fetching deals')
+        return []
     }
     const associations = ['companies']
     let requestUrl = await storage.get(NEXT_DEAL_BATCH_KEY)
-    if(!requestUrl){
-        requestUrl = `https://api.hubapi.com/crm/v3/objects/deals?limit=100&paginateAssociations=false&archived=false&${global.hubspotAuth}&associations=${associations.join(',')}`
+    if (!requestUrl) {
+        requestUrl = `https://api.hubapi.com/crm/v3/objects/deals?limit=100&paginateAssociations=false&archived=false&${
+            global.hubspotAuth
+        }&associations=${associations.join(',')}`
     }
     const authResponse = await fetchWithRetry(requestUrl)
     const res = await authResponse.json()
-    if(!statusOk(authResponse) || res.status === 'error'){
+    if (!statusOk(authResponse) || res.status === 'error') {
         const errorMessage = res.message ?? ''
         console.error(
             `Unable to get deals from Hubspot. Status Code: ${authResponse.status}. Error message: ${errorMessage}`
         )
     }
-    if(res && res['results']){
+    if (res && res['results']) {
         for (hubspotDeal of res['results']) {
             exists = await storage.get(hubspotDeal['id'], false)
-            if(!exists){
+            if (!exists) {
                 storage.set(hubspotDeal['id'], true)
                 console.log(`Found new deal: ${hubspotDeal['id']}`)
-            }else{
+            } else {
                 console.log(`Deal ${hubspotDeal['id']} already exists`)
                 continue
             }
             const props = hubspotDeal['properties']
-            props['name'] = props['dealname']  // set name to dealname so that it doesn't show deal id in the groups list
+            props['name'] = props['dealname'] // set name to dealname so that it doesn't show deal id in the groups list
             posthog.capture('$groupidentify', {
-                '$group_type': config.dealsGroupType,
-                '$group_key': hubspotDeal["id"],
-                '$group_set':  props,
+                $group_type: config.dealsGroupType,
+                $group_key: hubspotDeal['id'],
+                $group_set: props
             })
             // set related company group
-            if(hubspotDeal['associations'] && hubspotDeal['associations']['companies']){
-                hubspotDeal['associations']['companies']['results'].forEach(company => {
-                    posthog.capture("$groupidentify", {
-                        "$groups": {
+            if (config.companiesGroupType && hubspotDeal['associations'] && hubspotDeal['associations']['companies']) {
+                hubspotDeal['associations']['companies']['results'].forEach((company) => {
+                    posthog.capture('$groupidentify', {
+                        $groups: {
                             [config.companiesGroupType]: company['id'],
                             [config.dealsGroupType]: hubspotDeal['id']
                         }
@@ -185,45 +204,57 @@ async function fetchAllDeals(config, global, storage){
     await storage.set(NEXT_DEAL_BATCH_KEY, nextDealBatch)
 }
 
-async function fetchAllCompanies(config, global, storage){
-    if (!config.companiesGroupType){
-        console.log("No companies group type defined. Skipping fetching companies")
-        return
+async function fetchAllCompanies(config, global, storage) {
+    if (!config.companiesGroupType) {
+        console.log('No companies group type defined. Skipping fetching companies')
+        return []
     }
     let requestUrl = await storage.get(NEXT_COMPANY_BATCH_KEY)
-    const properties = ['name','hubspotscore','city',
-        'state','zip','country','website',
-        'industry','total_revenue','total_money_raised',
-        'hs_num_open_deals','hs_total_deal_value','num_associated_deals',
-        'annualrevenue', 'numberofemployees']
-    if(!requestUrl){
+    const properties = [
+        'name',
+        'hubspotscore',
+        'city',
+        'state',
+        'zip',
+        'country',
+        'website',
+        'industry',
+        'total_revenue',
+        'total_money_raised',
+        'hs_num_open_deals',
+        'hs_total_deal_value',
+        'num_associated_deals',
+        'annualrevenue',
+        'numberofemployees'
+    ]
+    if (!requestUrl) {
         requestUrl = `https://api.hubapi.com/crm/v3/objects/companies?limit=100&archived=false&${
             global.hubspotAuth
         }&properties=${properties.join(',')}`
     }
     const authResponse = await fetchWithRetry(requestUrl)
     const res = await authResponse.json()
-    if(!statusOk(authResponse) || res.status === 'error'){
+    if (!statusOk(authResponse) || res.status === 'error') {
         const errorMessage = res.message ?? ''
         console.error(
             `Unable to get companies from Hubspot. Status Code: ${authResponse.status}. Error message: ${errorMessage}`
         )
     }
-    if(res && res['results']){
+    if (res && res['results']) {
         for (hubspotCompany of res['results']) {
             exists = await storage.get(hubspotCompany['id'], false)
-            if(!exists){
+            if (!exists) {
                 storage.set(hubspotCompany['id'], true)
                 console.log(`Found new company: ${hubspotCompany['id']}`)
-            }else{
+            } else {
                 console.log(`Company ${hubspotCompany['id']} already exists`)
                 continue
             }
             const props = hubspotCompany['properties']
             posthog.capture('$groupidentify', {
-                '$group_type': config.companiesGroupType,
-                '$group_key': hubspotCompany["id"],
-                '$group_set':  props,
+                $group_type: config.companiesGroupType,
+                $group_key: hubspotCompany['id'],
+                $group_set: props
             })
         }
     }
@@ -234,12 +265,11 @@ async function fetchAllCompanies(config, global, storage){
     await storage.set(NEXT_COMPANY_BATCH_KEY, nextCompanyBatch)
 }
 
-
 async function runEveryMinute({ config, global, storage }) {
-    console.log("fetching hunspot companies")
+    console.log('fetching hunspot companies')
     await fetchAllCompanies(config, global, storage)
-    
-    console.log("fetching hunspot deals")
+
+    console.log('fetching hunspot deals')
     await fetchAllDeals(config, global, storage)
 
     console.log('Starting score sync job...')
@@ -303,7 +333,7 @@ async function onEvent(event, { config, global }) {
                 email,
                 {
                     ...(event['$set'] ?? {}),
-                    ...(event['properties'] ?? {}),
+                    ...(event['properties'] ?? {})
                 },
                 global.hubspotAuth,
                 config.additionalPropertyMappings,
@@ -341,9 +371,9 @@ async function createHubspotContact(email, properties, authQs, additionalPropert
         `https://api.hubapi.com/crm/v3/objects/contacts?${authQs}`,
         {
             headers: {
-                'Content-Type': 'application/json',
+                'Content-Type': 'application/json'
             },
-            body: JSON.stringify({ properties: { email: email, ...hubspotFilteredProps } }),
+            body: JSON.stringify({ properties: { email: email, ...hubspotFilteredProps } })
         },
         'POST'
     )
@@ -364,9 +394,9 @@ async function createHubspotContact(email, properties, authQs, additionalPropert
                 `https://api.hubapi.com/crm/v3/objects/contacts/${existingId[1]}?${authQs}`,
                 {
                     headers: {
-                        'Content-Type': 'application/json',
+                        'Content-Type': 'application/json'
                     },
-                    body: JSON.stringify({ properties: { email: email, ...hubspotFilteredProps } }),
+                    body: JSON.stringify({ properties: { email: email, ...hubspotFilteredProps } })
                 },
                 'PATCH'
             )
@@ -404,8 +434,7 @@ function statusOk(res) {
 }
 
 function isEmail(email) {
-    const re =
-        /^(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/
+    const re = /^(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/
     return re.test(String(email).toLowerCase())
 }
 
@@ -441,5 +470,13 @@ const hubspotPropsMap = {
     website: 'website',
     domain: 'website',
     company_website: 'website',
-    companyWebsite: 'website',
+    companyWebsite: 'website'
+}
+
+module.exports = {
+    setupPlugin,
+    runEveryMinute,
+    onEvent,
+    fetchAllCompanies,
+    fetchAllDeals
 }
