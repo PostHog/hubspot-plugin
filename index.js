@@ -266,7 +266,7 @@ async function fetchAllCompanies(config, global, storage) {
 }
 
 async function runEveryMinute({ config, global, storage }) {
-    console.log('fetching hunspot companies')
+    console.log('fetching hubspot companies')
     await fetchAllCompanies(config, global, storage)
 
     console.log('fetching hunspot deals')
