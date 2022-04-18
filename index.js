@@ -269,7 +269,7 @@ async function runEveryMinute({ config, global, storage }) {
     console.log('fetching hubspot companies')
     await fetchAllCompanies(config, global, storage)
 
-    console.log('fetching hunspot deals')
+    console.log('fetching hubspot deals')
     await fetchAllDeals(config, global, storage)
 
     console.log('Starting score sync job...')
