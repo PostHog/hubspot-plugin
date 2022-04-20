@@ -60,5 +60,8 @@
             "default": "",
             "required": false
         }
-    ]
+    ],
+    "publicJobs": {
+      "Clear storage": {}
+    }
 }
