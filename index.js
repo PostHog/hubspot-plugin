@@ -86,13 +86,13 @@ async function getHubspotContacts(config, global, storage) {
     }
 
     const loadedContacts = []
-    const authResponse = await fetchWithRetry(requestUrl)
-    const res = await authResponse.json()
+    const response = await fetchWithRetry(requestUrl)
+    const res = await response.json()
 
-    if (!statusOk(authResponse) || res.status === 'error') {
+    if (!statusOk(response) || res.status === 'error') {
         const errorMessage = res.message ?? ''
         console.error(
-            `Unable to get contacts from Hubspot. Status Code: ${authResponse.status}. Error message: ${errorMessage}`
+            `Unable to get contacts from Hubspot. Status Code: ${response.status}. Error message: ${errorMessage}`
         )
     }
 
@@ -133,9 +133,9 @@ async function getHubspotContacts(config, global, storage) {
     }
 
     let nextContactBatch
-    res['paging'] && res['paging']['next']
-        ? (nextContactBatch = res['paging']['next']['link'] + `&${global.hubspotAuth}`)
-        : null
+    if (res['paging'] && res['paging']['next']) {
+        nextContactBatch = res['paging']['next']['link'] + `&${global.hubspotAuth}`
+    }
 
     await storage.set(NEXT_CONTACT_BATCH_KEY, nextContactBatch)
     console.log(`Loaded ${loadedContacts.length} Contacts from Hubspot`)
@@ -159,23 +159,23 @@ async function fetchAllDeals(config, global, storage) {
             global.hubspotAuth
         }&associations=${associations.join(',')}`
     }
-    const authResponse = await fetchWithRetry(requestUrl)
-    const res = await authResponse.json()
-    if (!statusOk(authResponse) || res.status === 'error') {
+    const response = await fetchWithRetry(requestUrl)
+    const res = await response.json()
+    if (!statusOk(response) || res.status === 'error') {
         const errorMessage = res.message ?? ''
         console.error(
-            `Unable to get deals from Hubspot. Status Code: ${authResponse.status}. Error message: ${errorMessage}`
+            `Unable to get deals from Hubspot. Status Code: ${response.status}. Error message: ${errorMessage}`
         )
     }
     if (res && res['results']) {
         for (hubspotDeal of res['results']) {
-            exists = await storage.get(hubspotDeal['id'], false)
-            if (!exists) {
-                storage.set(hubspotDeal['id'], true)
-                console.log(`Found new deal: ${hubspotDeal['id']}`)
-            } else {
+            const exists = await storage.get(hubspotDeal['id'], false)
+            if (exists) {
                 console.log(`Deal ${hubspotDeal['id']} already exists`)
                 continue
+            } else {
+                storage.set(hubspotDeal['id'], true)
+                console.log(`Found new deal: ${hubspotDeal['id']}`)
             }
             const props = hubspotDeal['properties']
             props['name'] = props['dealname'] // set name to dealname so that it doesn't show deal id in the groups list
@@ -197,10 +197,10 @@ async function fetchAllDeals(config, global, storage) {
             }
         }
     }
-    let nextDealBatch
-    res['paging'] && res['paging']['next']
-        ? (nextDealBatch = res['paging']['next']['link'] + `&${global.hubspotAuth}`)
-        : null
+    let nextDealBatch = null
+    if (res['paging'] && res['paging']['next']) {
+        nextDealBatch = res['paging']['next']['link'] + `&${global.hubspotAuth}`
+    }
     await storage.set(NEXT_DEAL_BATCH_KEY, nextDealBatch)
 }
 
@@ -232,23 +232,23 @@ async function fetchAllCompanies(config, global, storage) {
             global.hubspotAuth
         }&properties=${properties.join(',')}`
     }
-    const authResponse = await fetchWithRetry(requestUrl)
-    const res = await authResponse.json()
-    if (!statusOk(authResponse) || res.status === 'error') {
+    const response = await fetchWithRetry(requestUrl)
+    const res = await response.json()
+    if (!statusOk(response) || res.status === 'error') {
         const errorMessage = res.message ?? ''
         console.error(
-            `Unable to get companies from Hubspot. Status Code: ${authResponse.status}. Error message: ${errorMessage}`
+            `Unable to get companies from Hubspot. Status Code: ${response.status}. Error message: ${errorMessage}`
         )
     }
     if (res && res['results']) {
         for (hubspotCompany of res['results']) {
-            exists = await storage.get(hubspotCompany['id'], false)
-            if (!exists) {
-                storage.set(hubspotCompany['id'], true)
-                console.log(`Found new company: ${hubspotCompany['id']}`)
-            } else {
+            const exists = await storage.get(hubspotCompany['id'], false)
+            if (exists) {
                 console.log(`Company ${hubspotCompany['id']} already exists`)
                 continue
+            } else {
+                storage.set(hubspotCompany['id'], true)
+                console.log(`Found new company: ${hubspotCompany['id']}`)
             }
             const props = hubspotCompany['properties']
             posthog.capture('$groupidentify', {
@@ -259,9 +259,9 @@ async function fetchAllCompanies(config, global, storage) {
         }
     }
     let nextCompanyBatch
-    res['paging'] && res['paging']['next']
-        ? (nextCompanyBatch = res['paging']['next']['link'] + `&${global.hubspotAuth}`)
-        : null
+    if (res['paging'] && res['paging']['next']) {
+        nextCompanyBatch = res['paging']['next']['link'] + `&${global.hubspotAuth}`
+    }
     await storage.set(NEXT_COMPANY_BATCH_KEY, nextCompanyBatch)
 }
 

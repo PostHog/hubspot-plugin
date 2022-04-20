@@ -65,7 +65,7 @@
             "hint": "Group type that you want to enrich with hubspot companies",
             "name": "Company Group Type",
             "type": "string",
-            "default": null,
+            "default": "",
             "required": false
         },
         {
@@ -73,7 +73,7 @@
             "hint": "Group type that you want to enrich with hubspot deals",
             "name": "Deal Group Type",
             "type": "string",
-            "default": null,
+            "default": "",
             "required": false
         }
     ]
