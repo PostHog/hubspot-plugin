@@ -1,4 +1,14 @@
-async function setupPlugin({ config, global }) {
+const NEXT_CONTACT_BATCH_KEY = 'next_hubspot_contacts_url'
+const SYNC_LAST_COMPLETED_DATE_KEY = 'last_job_complete_day'
+
+export const jobs = {
+   'Clear storage': async (_, { storage }) => {
+       await storage.del(NEXT_CONTACT_BATCH_KEY)
+       await storage.del(SYNC_LAST_COMPLETED_DATE_KEY)
+   }
+}
+
+export async function setupPlugin({ config, global }) {
     global.hubspotAuth = `hapikey=${config.hubspotApiKey}`
     global.posthogUrl = config.postHogUrl
     global.apiToken = config.postHogApiToken
@@ -99,10 +109,7 @@ async function getHubspotContacts(global, storage) {
     return loadedContacts
 }
 
-const NEXT_CONTACT_BATCH_KEY = 'next_hubspot_contacts_url'
-const SYNC_LAST_COMPLETED_DATE_KEY = 'last_job_complete_day'
-
-async function runEveryMinute({ config, global, storage }) {
+export async function runEveryMinute({ config, global, storage }) {
     console.log('Starting score sync job...')
     posthog.capture('hubspot score sync started')
 
@@ -151,7 +158,7 @@ async function runEveryMinute({ config, global, storage }) {
     }
 }
 
-async function onEvent(event, { config, global }) {
+export async function onEvent(event, { config, global }) {
     const triggeringEvents = (config.triggeringEvents || '').split(',')
     if (triggeringEvents.indexOf(event.event) >= 0) {
         const email = getEmailFromEvent(event)
