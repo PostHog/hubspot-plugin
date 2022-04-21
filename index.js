@@ -1,3 +1,15 @@
+const NEXT_CONTACT_BATCH_KEY = 'next_hubspot_contacts_url'
+const SYNC_LAST_COMPLETED_DATE_KEY = 'last_job_complete_day'
+const NEXT_DEAL_BATCH_KEY = 'next_hubspot_deals_url'
+const NEXT_COMPANY_BATCH_KEY = 'next_hubspot_companies_url'
+
+const jobs = {
+    'Clear storage': async (_, { storage }) => {
+        await storage.del(NEXT_CONTACT_BATCH_KEY)
+        await storage.del(SYNC_LAST_COMPLETED_DATE_KEY)
+    }
+}
+
 async function setupPlugin({ config, global }) {
     global.hubspotAuth = `hapikey=${config.hubspotApiKey}`
     global.posthogUrl = config.postHogUrl
@@ -141,11 +153,6 @@ async function getHubspotContacts(config, global, storage) {
     console.log(`Loaded ${loadedContacts.length} Contacts from Hubspot`)
     return loadedContacts
 }
-
-const NEXT_CONTACT_BATCH_KEY = 'next_hubspot_contacts_url'
-const SYNC_LAST_COMPLETED_DATE_KEY = 'last_job_complete_day'
-const NEXT_DEAL_BATCH_KEY = 'next_hubspot_deals_url'
-const NEXT_COMPANY_BATCH_KEY = 'next_hubspot_companies_url'
 
 async function fetchAllDeals(config, global, storage) {
     if (!config.dealsGroupType) {
@@ -474,6 +481,7 @@ const hubspotPropsMap = {
 }
 
 module.exports = {
+    jobs,
     setupPlugin,
     runEveryMinute,
     onEvent,
