@@ -29,6 +29,14 @@
             "required": false
         },
         {
+            "key": "createOnlyProperties",
+            "hint": "A list of properties that are only used when creating Hubspot Contacts and ignored when updating existing Hubspot Contacts. Provide a comma-separated list of: hubSpotPropertyName",
+            "name": "Create only HubSpot properties",
+            "type": "string",
+            "default": "",
+            "required": false
+        },
+        {
             "key": "ignoredEmails",
             "hint": "A comma-separated list of email domains to ignore and not create contacts for in Hubspot.",
             "name": "Email domains to skip",
