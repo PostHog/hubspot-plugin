@@ -175,7 +175,7 @@ export async function onEvent(event, { config, global }) {
                 },
                 global.hubspotAuth,
                 config.additionalPropertyMappings,
-                event['sent_at']
+                event['timestamp']
             )
         }
     }
