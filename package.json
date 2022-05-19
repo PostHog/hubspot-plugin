@@ -14,9 +14,14 @@
     },
     "homepage": "https://github.com/PostHog/hubspot-plugin#readme",
     "devDependencies": {
+        "@posthog/plugin-scaffold": "^0.12.10",
         "husky": "^4.3.0",
+        "jest": "^27.5.1",
         "lint-staged": "^10.5.2",
         "prettier": "^2.2.1"
+    },
+    "scripts": {
+        "test": "jest"
     },
     "husky": {
         "hooks": {
