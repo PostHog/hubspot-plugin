@@ -36,8 +36,6 @@ async function updateHubspotScore(email, hubspotScore, global) {
     if (userResponse['results'] && userResponse['results'].length > 0) {
         for (const loadedUser of userResponse['results']) {
             const userId = loadedUser['id']
-            const currentProps = loadedUser['properties'] ?? {}
-            const updatedProps = { hubspot_score: parseInt(hubspotScore, 10), ...currentProps }
 
             if (userId) {
                 const _updateRes = await fetch(
@@ -50,7 +48,9 @@ async function updateHubspotScore(email, hubspotScore, global) {
                             'Content-Type': 'application/json',
                         },
                         body: JSON.stringify({
-                            properties: updatedProps,
+                            properties: {
+                                hubspot_score: parseInt(hubspotScore, 10)
+                            },
                         }),
                     }
                 )
