@@ -56,7 +56,8 @@ async function updateHubspotScore(email, hubspotScore, global) {
                         }),
                     }
                 )
-                posthog.capture('hubspot score updated', { distinct_id: distinct_id, hubspot_score: score, $set: {hubspot_score: score}})
+                posthog.identify(distinct_id, $set: {hubspot_score: score})
+                posthog.capture('hubspot score updated')
                 updated = true
             }
         }
