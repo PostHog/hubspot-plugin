@@ -39,6 +39,9 @@ async function updateHubspotScore(email, hubspotScore, global) {
             const distinct_id = loadedUser['distinct_id'][0]
             const score = parseInt(hubspotScore, 10)
 
+            posthog.identify(distinct_id, $set: {hubspot_score: score})
+            posthog.capture('hubspot score updated')    
+
             if (userId) {
                 const _updateRes = await fetch(
                     `${global.posthogUrl}/api/person/${userId}/?token=${global.projectToken}`,
@@ -56,8 +59,6 @@ async function updateHubspotScore(email, hubspotScore, global) {
                         }),
                     }
                 )
-                posthog.identify(distinct_id, $set: {hubspot_score: score})
-                posthog.capture('hubspot score updated')
                 updated = true
             }
         }
