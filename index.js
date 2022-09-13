@@ -39,7 +39,7 @@ async function updateHubspotScore(email, hubspotScore, global) {
             const distinct_id = loadedUser['distinct_id'][0]
             const score = parseInt(hubspotScore, 10)
 
-            posthog.identify(distinct_id, $set: {hubspot_score: score})
+            posthog.identify(distinct_id, {hubspot_score: score})
             posthog.capture('hubspot score updated')    
 
             if (userId) {
