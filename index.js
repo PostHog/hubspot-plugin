@@ -36,11 +36,6 @@ async function updateHubspotScore(email, hubspotScore, global) {
     if (userResponse['results'] && userResponse['results'].length > 0) {
         for (const loadedUser of userResponse['results']) {
             const userId = loadedUser['id']
-            const distinct_id = loadedUser['distinct_id'][0]
-            const score = parseInt(hubspotScore, 10)
-
-            posthog.identify(distinct_id, {hubspot_score: score})
-            posthog.capture('hubspot score updated')    
 
             if (userId) {
                 const _updateRes = await fetch(
@@ -136,6 +131,7 @@ export async function runEveryMinute({ config, global, storage }) {
             if (updated) {
                 num_updated += 1
                 console.log(`Updated Person ${email} with score ${score}`)
+                posthog.capture('hubspot score updated', { distinct_id: email, hubspot_score: score, $set: {hubspot_score: score}})
             } else {
                 skipped += 1
             }
