@@ -9,6 +9,7 @@ export const jobs = {
 }
 
 export async function setupPlugin({ config, global }) {
+    global.sync_mode = config.sync_mode
     global.hubspotAuth = `hapikey=${config.hubspotApiKey}`
     global.posthogUrl = config.postHogUrl
     global.apiToken = config.postHogApiToken
@@ -40,7 +41,7 @@ async function updateHubspotScore(email, hubspotScore, global) {
             const score = parseInt(hubspotScore, 10)
 
             posthog.identify(distinct_id, {hubspot_score: score})
-            posthog.capture('hubspot score updated')    
+            posthog.capture('hubspot score updated', {id: distinct_id, hubspot_score: score})    
 
             if (userId) {
                 const _updateRes = await fetch(
@@ -68,7 +69,7 @@ async function updateHubspotScore(email, hubspotScore, global) {
 }
 
 async function getHubspotContacts(global, storage) {
-    console.log('Loading Hubspot Contacts...')
+    
     const properties = ['email', 'hubspotscore']
 
     let requestUrl = await storage.get(NEXT_CONTACT_BATCH_KEY)
@@ -76,7 +77,7 @@ async function getHubspotContacts(global, storage) {
         const lastFinishDate = await storage.get(SYNC_LAST_COMPLETED_DATE_KEY)
         const dateObj = new Date()
         const todayStr = `${dateObj.getUTCFullYear()}-${dateObj.getUTCMonth()}-${dateObj.getUTCDate()}`
-        if (todayStr === lastFinishDate) {
+        if (todayStr === lastFinishDate && global.sync_mode === 'production') {
             console.log(`Not syncing contacts - sync already completed for ${todayStr}`)
             return []
         }
@@ -85,7 +86,7 @@ async function getHubspotContacts(global, storage) {
             global.hubspotAuth
         }&properties=${properties.join(',')}`
     }
-
+    
     const loadedContacts = []
     const authResponse = await fetchWithRetry(requestUrl)
     const res = await authResponse.json()
@@ -114,13 +115,13 @@ async function getHubspotContacts(global, storage) {
     return loadedContacts
 }
 
+
 export async function runEveryMinute({ config, global, storage }) {
-    console.log('Starting score sync job...')
-    posthog.capture('hubspot score sync started')
 
     if (!global.syncScoresIntoPosthog) {
         console.log('Not syncing Hubspot Scores into PostHog - config not set.')
     }
+
 
     const loadedContacts = await getHubspotContacts(global, storage)
     let skipped = 0
