@@ -59,6 +59,15 @@
             "type": "string",
             "default": "",
             "required": false
+        },
+        {
+            "key": "sync_mode",
+            "hint": "`debug` will ignore storage and continually re-sync every minute. For testing purposes only",
+            "name": "debug",
+            "type": "choice",
+            "default": "production",
+            "required": true,
+            "choices": ["debug", "production"]
         }
     ],
     "publicJobs": {
