@@ -9,6 +9,7 @@ export const jobs = {
 }
 
 export async function setupPlugin({ config, global }) {
+    global.syncMode = config.syncMode
     global.hubspotAuth = `hapikey=${config.hubspotApiKey}`
     global.posthogUrl = config.postHogUrl
     global.apiToken = config.postHogApiToken
@@ -71,7 +72,7 @@ async function getHubspotContacts(global, storage) {
         const lastFinishDate = await storage.get(SYNC_LAST_COMPLETED_DATE_KEY)
         const dateObj = new Date()
         const todayStr = `${dateObj.getUTCFullYear()}-${dateObj.getUTCMonth()}-${dateObj.getUTCDate()}`
-        if (todayStr === lastFinishDate) {
+        if (todayStr === lastFinishDate && global.syncMode === 'production') {
             console.log(`Not syncing contacts - sync already completed for ${todayStr}`)
             return []
         }

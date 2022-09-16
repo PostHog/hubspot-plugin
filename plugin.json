@@ -59,6 +59,15 @@
             "type": "string",
             "default": "",
             "required": false
+        },
+        {
+            "key": "syncMode",
+            "hint": "If run in debug mode, run each minute and ignore cache. Do not use this in production, only for debugging",
+            "name": "Debug Mode",
+            "type": "choice",
+            "default": "production",
+            "required": true,
+            "choices": ["production", "debug"]
         }
     ],
     "publicJobs": {
