@@ -9,7 +9,7 @@ export const jobs = {
 }
 
 export async function setupPlugin({ config, global }) {
-    global.sync_mode = config.sync_mode
+    global.syncMode = config.syncMode
     global.hubspotAuth = `hapikey=${config.hubspotApiKey}`
     global.posthogUrl = config.postHogUrl
     global.apiToken = config.postHogApiToken
@@ -37,29 +37,31 @@ async function updateHubspotScore(email, hubspotScore, global) {
     if (userResponse['results'] && userResponse['results'].length > 0) {
         for (const loadedUser of userResponse['results']) {
             const userId = loadedUser['id']
-            const distinct_id = loadedUser['distinct_id'][0]
-            const score = parseInt(hubspotScore, 10)
 
-            posthog.identify(distinct_id, {hubspot_score: score})
-            posthog.capture('hubspot score updated', {id: distinct_id, hubspot_score: score})    
-
+            const distinct_id = loadedUser['distinct_ids'][0]
             if (userId) {
-                const _updateRes = await fetch(
-                    `${global.posthogUrl}/api/person/${userId}/?token=${global.projectToken}`,
-                    {
-                        method: 'PATCH',
-                        headers: {
-                            Authorization: `Bearer ${global.apiToken}`,
-                            Accept: 'application/json',
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify({
-                            properties: {
-                                hubspot_score: parseInt(hubspotScore, 10)
-                            },
-                        }),
-                    }
-                )
+                           
+                // posthog.identify(distinct_id, {hubspot_score: score})
+                posthog.capture('hubspot score updated', {distinct_id: distinct_id, hubspot_score: hubspotScore})
+                console.log(`Updated Person ${email} with score ${hubspotScore}`)    
+                
+                // const _updateRes = await fetch(
+                //     `${global.posthogUrl}/api/person/${userId}/?token=${global.projectToken}`,
+                //     {
+                //         method: 'PATCH',
+                //         headers: {
+                //             Authorization: `Bearer ${global.apiToken}`,
+                //             Accept: 'application/json',
+                //             'Content-Type': 'application/json',
+                //         },
+                //         body: JSON.stringify({
+                //             properties: {
+                //                 distinct_id: distinct_id,
+                //                 hubspot_score: parseInt(hubspotScore, 10)
+                //             },
+                //         }),
+                //     }
+                // )
                 updated = true
             }
         }
@@ -77,7 +79,8 @@ async function getHubspotContacts(global, storage) {
         const lastFinishDate = await storage.get(SYNC_LAST_COMPLETED_DATE_KEY)
         const dateObj = new Date()
         const todayStr = `${dateObj.getUTCFullYear()}-${dateObj.getUTCMonth()}-${dateObj.getUTCDate()}`
-        if (todayStr === lastFinishDate && global.sync_mode === 'production') {
+
+        if (todayStr === lastFinishDate && global.syncMode === 'production') {
             console.log(`Not syncing contacts - sync already completed for ${todayStr}`)
             return []
         }
@@ -122,7 +125,6 @@ export async function runEveryMinute({ config, global, storage }) {
         console.log('Not syncing Hubspot Scores into PostHog - config not set.')
     }
 
-
     const loadedContacts = await getHubspotContacts(global, storage)
     let skipped = 0
     let num_updated = 0
@@ -136,11 +138,11 @@ export async function runEveryMinute({ config, global, storage }) {
             const updated = await updateHubspotScore(email, score, global)
             if (updated) {
                 num_updated += 1
-                console.log(`Updated Person ${email} with score ${score}`)
             } else {
                 skipped += 1
             }
         } catch (error) {
+            (console.error || console.log).call(console, error.stack || error);
             console.log(`Error updating Hubspot score for ${email} - Skipping`)
             num_errors += 1
         }

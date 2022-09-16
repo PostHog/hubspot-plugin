@@ -61,13 +61,13 @@
             "required": false
         },
         {
-            "key": "sync_mode",
-            "hint": "`debug` will ignore storage and continually re-sync every minute. For testing purposes only",
-            "name": "debug",
+            "key": "syncMode",
+            "hint": "If run in debug mode, run each minute and ignore cache. Do not use this in production, only for debugging",
+            "name": "Debug Mode",
             "type": "choice",
             "default": "production",
             "required": true,
-            "choices": ["debug", "production"]
+            "choices": ["production", "debug"]
         }
     ],
     "publicJobs": {
