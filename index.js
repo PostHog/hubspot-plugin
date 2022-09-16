@@ -37,6 +37,7 @@ async function updateHubspotScore(email, hubspotScore, global) {
     if (userResponse['results'] && userResponse['results'].length > 0) {
         for (const loadedUser of userResponse['results']) {
             const userId = loadedUser['id']
+
             const distinct_id = loadedUser['distinct_ids'][0]
             if (userId) {
                            
@@ -70,7 +71,7 @@ async function updateHubspotScore(email, hubspotScore, global) {
 }
 
 async function getHubspotContacts(global, storage) {
-    console.log('Loading Hubspot Contacts...')
+    
     const properties = ['email', 'hubspotscore']
 
     let requestUrl = await storage.get(NEXT_CONTACT_BATCH_KEY)
@@ -78,6 +79,7 @@ async function getHubspotContacts(global, storage) {
         const lastFinishDate = await storage.get(SYNC_LAST_COMPLETED_DATE_KEY)
         const dateObj = new Date()
         const todayStr = `${dateObj.getUTCFullYear()}-${dateObj.getUTCMonth()}-${dateObj.getUTCDate()}`
+
         if (todayStr === lastFinishDate && global.syncMode === 'production') {
             console.log(`Not syncing contacts - sync already completed for ${todayStr}`)
             return []
@@ -87,7 +89,7 @@ async function getHubspotContacts(global, storage) {
             global.hubspotAuth
         }&properties=${properties.join(',')}`
     }
-
+    
     const loadedContacts = []
     const authResponse = await fetchWithRetry(requestUrl)
     const res = await authResponse.json()
@@ -116,15 +118,13 @@ async function getHubspotContacts(global, storage) {
     return loadedContacts
 }
 
+
 export async function runEveryMinute({ config, global, storage }) {
-    console.log('Starting score sync job...')
-    posthog.capture('hubspot score sync started')
 
     if (!global.syncScoresIntoPosthog) {
         console.log('Not syncing Hubspot Scores into PostHog - config not set.')
     }
 
-    //get list of contacts from hubspot
     const loadedContacts = await getHubspotContacts(global, storage)
     let skipped = 0
     let num_updated = 0
