@@ -2,7 +2,7 @@
     "name": "Hubspot",
     "url": "https://github.com/PostHog/hubspot-plugin",
     "description": "Send contact data to Hubspot on PostHog identify events.",
-    "main": "index.js",
+    "main": "index.ts",
     "config": [
         {
             "key": "hubspotApiKey",
@@ -42,23 +42,7 @@
             "name": "Hubspot Score PostHog Instance",
             "type": "string",
             "default": "https://app.posthog.com",
-            "required": false
-        },
-        {
-            "key": "postHogApiToken",
-            "hint": "A personal API key created from the 'My Account' menu. Required to sync Hubspot Scores into PostHog.",
-            "name": "PostHog API Access Key",
-            "type": "string",
-            "default": "",
-            "required": false
-        },
-        {
-            "key": "postHogProjectToken",
-            "hint": "The project you want to sync Hubspot Scores into. Can be found in Project Settings. Required to sync Hubspot Scores into PostHog.",
-            "name": "PostHog Project Token",
-            "type": "string",
-            "default": "",
-            "required": false
+            "required": true
         },
         {
             "key": "syncMode",
@@ -71,6 +55,6 @@
         }
     ],
     "publicJobs": {
-      "Clear storage": {}
+        "Clear storage": {}
     }
 }
