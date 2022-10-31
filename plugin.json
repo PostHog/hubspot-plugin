@@ -10,7 +10,8 @@
             "name": "Hubspot API Key",
             "type": "string",
             "default": "",
-            "required": true
+            "required": true,
+            "secret": true
         },
         {
             "key": "triggeringEvents",
