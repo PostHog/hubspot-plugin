@@ -5,9 +5,9 @@
     "main": "index.ts",
     "config": [
         {
-            "key": "hubspotApiKey",
-            "hint": "Can be acquired under Profile Preferences -> Integrations",
-            "name": "Hubspot API Key",
+            "key": "hubspotAccessToken",
+            "hint": "Can be acquired under Profile Preferences -> Integrations -> Private Apps",
+            "name": "Hubspot Access Token",
             "type": "string",
             "default": "",
             "required": true,
