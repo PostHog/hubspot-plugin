@@ -1,3 +1,5 @@
+import { RetryError } from '@posthog/plugin-scaffold'
+
 const NEXT_CONTACT_BATCH_KEY = 'next_hubspot_contacts_url'
 const SYNC_LAST_COMPLETED_DATE_KEY = 'last_job_complete_day'
 
@@ -28,18 +30,29 @@ export const jobs = {
 }
 
 export async function setupPlugin({ config, global }) {
-    global.syncMode = config.syncMode
-    global.hubspotAuth = `hapikey=${config.hubspotApiKey}`
-    global.posthogUrl = config.postHogUrl
+    try {
+        global.syncMode = config.syncMode
+        global.hubspotApiKey = config.hubspotApiKey
+        global.posthogUrl = config.postHogUrl
 
-    global.syncScoresIntoPosthog = global.posthogUrl
+        global.syncScoresIntoPosthog = global.posthogUrl
 
-    const authResponse = await fetchWithRetry(
-        `https://api.hubapi.com/crm/v3/objects/contacts?limit=1&paginateAssociations=false&archived=false&${global.hubspotAuth}`
-    )
+        const authResponse = await fetch(
+            `https://api.hubapi.com/crm/v3/objects/contacts?limit=1&paginateAssociations=false&archived=false`,
+            {
+                method: 'POST',
+                headers: {
+                    Authorization: `Bearer ${config.hubspotApiKey}`,
+                    'Content-Type': 'application/json'
+                }
+            }
+        )
 
-    if (!statusOk(authResponse)) {
-        throw new Error('Unable to connect to Hubspot. Please make sure your API key is correct.')
+        if (!statusOk(authResponse)) {
+            throw new Error('Unable to connect to Hubspot. Please make sure your API key is correct.')
+        }
+    } catch (error) {
+        throw new RetryError(error)
     }
 }
 
@@ -110,13 +123,19 @@ async function getHubspotContacts(global, storage) {
         }
 
         // start fresh - begin processing all contacts
-        requestUrl = `https://api.hubapi.com/crm/v3/objects/contacts?limit=100&paginateAssociations=false&archived=false&${
-            global.hubspotAuth
-        }&properties=${properties.join(',')}`
+        requestUrl = `https://api.hubapi.com/crm/v3/objects/contacts?limit=100&paginateAssociations=false&archived=false&properties=${properties.join(
+            ','
+        )}`
     }
 
     const loadedContacts = []
-    const authResponse = await fetchWithRetry(requestUrl)
+    const authResponse = await fetch(requestUrl, {
+        method: 'POST',
+        headers: {
+            Authorization: `Bearer ${global.hubspotApiKey}`,
+            'Content-Type': 'application/json'
+        }
+    })
     const res = await authResponse.json()
 
     if (!statusOk(authResponse) || res.status === 'error') {
@@ -192,7 +211,7 @@ export async function onEvent(event, { config, global }) {
                     ...(event['$set'] ?? {}),
                     ...(event['properties'] ?? {})
                 },
-                global.hubspotAuth,
+                global.hubspotApiKey,
                 config.additionalPropertyMappings,
                 event['timestamp']
             )
@@ -200,7 +219,7 @@ export async function onEvent(event, { config, global }) {
     }
 }
 
-async function createHubspotContact(email, properties, authQs, additionalPropertyMappings, eventSendTime) {
+async function createHubspotContact(email, properties, apiKey, additionalPropertyMappings, eventSendTime) {
     let hubspotFilteredProps = {}
     for (const [key, val] of Object.entries(properties)) {
         if (hubspotPropsMap[key]) {
@@ -224,16 +243,14 @@ async function createHubspotContact(email, properties, authQs, additionalPropert
         }
     }
 
-    const addContactResponse = await fetchWithRetry(
-        `https://api.hubapi.com/crm/v3/objects/contacts?${authQs}`,
-        {
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ properties: { email: email, ...hubspotFilteredProps } })
+    const addContactResponse = await fetch(`https://api.hubapi.com/crm/v3/objects/contacts`, {
+        method: 'POST',
+        headers: {
+            Authorization: `Bearer ${apiKey}`,
+            'Content-Type': 'application/json'
         },
-        'POST'
-    )
+        body: JSON.stringify({ properties: { email: email, ...hubspotFilteredProps } })
+    })
 
     const addContactResponseJson = await addContactResponse.json()
 
@@ -248,15 +265,16 @@ async function createHubspotContact(email, properties, authQs, additionalPropert
             const existingId = addContactResponseJson.message.match(existingIdRegex)
             console.log(`Attempting to update contact ${email} instead...`)
 
-            const updateContactResponse = await fetchWithRetry(
-                `https://api.hubapi.com/crm/v3/objects/contacts/${existingId[1]}?${authQs}`,
+            const updateContactResponse = await fetch(
+                `https://api.hubapi.com/crm/v3/objects/contacts/${existingId[1]}`,
                 {
+                    method: 'PATCH',
                     headers: {
+                        Authorization: `Bearer ${apiKey}`,
                         'Content-Type': 'application/json'
                     },
                     body: JSON.stringify({ properties: { email: email, ...hubspotFilteredProps } })
-                },
-                'PATCH'
+                }
             )
 
             const updateResponseJson = await updateContactResponse.json()
@@ -271,19 +289,6 @@ async function createHubspotContact(email, properties, authQs, additionalPropert
         }
     } else {
         console.log(`Created Hubspot Contact for ${email}`)
-    }
-}
-
-async function fetchWithRetry(url, options = {}, method = 'GET', isRetry = false) {
-    try {
-        const res = await fetch(url, { method: method, ...options })
-        return res
-    } catch {
-        if (isRetry) {
-            throw new Error(`${method} request to ${url} failed.`)
-        }
-        const res = await fetchWithRetry(url, options, (method = method), (isRetry = true))
-        return res
     }
 }
 
