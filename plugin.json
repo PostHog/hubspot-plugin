@@ -6,8 +6,8 @@
     "config": [
         {
             "key": "hubspotApiKey",
-            "hint": "Can be acquired under Profile Preferences -> Integrations",
-            "name": "Hubspot API Key",
+            "hint": "Can be acquired under Profile Preferences -> Integrations -> Private Apps",
+            "name": "Hubspot Access Token",
             "type": "string",
             "default": "",
             "required": true,
