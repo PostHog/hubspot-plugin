@@ -40,7 +40,6 @@ export async function setupPlugin({ config, global }) {
         const authResponse = await fetch(
             `https://api.hubapi.com/crm/v3/objects/contacts?limit=1&paginateAssociations=false&archived=false`,
             {
-                method: 'POST',
                 headers: {
                     Authorization: `Bearer ${config.hubspotAccessToken}`,
                     'Content-Type': 'application/json'
