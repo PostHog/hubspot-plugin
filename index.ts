@@ -32,7 +32,7 @@ export const jobs = {
 export async function setupPlugin({ config, global }) {
     try {
         global.syncMode = config.syncMode
-        global.hubspotApiKey = config.hubspotApiKey
+        global.hubspotAccessToken = config.hubspotAccessToken
         global.posthogUrl = config.postHogUrl
 
         global.syncScoresIntoPosthog = global.posthogUrl
@@ -42,7 +42,7 @@ export async function setupPlugin({ config, global }) {
             {
                 method: 'POST',
                 headers: {
-                    Authorization: `Bearer ${config.hubspotApiKey}`,
+                    Authorization: `Bearer ${config.hubspotAccessToken}`,
                     'Content-Type': 'application/json'
                 }
             }
@@ -132,7 +132,7 @@ async function getHubspotContacts(global, storage) {
     const authResponse = await fetch(requestUrl, {
         method: 'POST',
         headers: {
-            Authorization: `Bearer ${global.hubspotApiKey}`,
+            Authorization: `Bearer ${global.hubspotAccessToken}`,
             'Content-Type': 'application/json'
         }
     })
@@ -211,7 +211,7 @@ export async function onEvent(event, { config, global }) {
                     ...(event['$set'] ?? {}),
                     ...(event['properties'] ?? {})
                 },
-                global.hubspotApiKey,
+                global.hubspotAccessToken,
                 config.additionalPropertyMappings,
                 event['timestamp']
             )
@@ -219,7 +219,7 @@ export async function onEvent(event, { config, global }) {
     }
 }
 
-async function createHubspotContact(email, properties, apiKey, additionalPropertyMappings, eventSendTime) {
+async function createHubspotContact(email, properties, accessToken, additionalPropertyMappings, eventSendTime) {
     let hubspotFilteredProps = {}
     for (const [key, val] of Object.entries(properties)) {
         if (hubspotPropsMap[key]) {
@@ -246,7 +246,7 @@ async function createHubspotContact(email, properties, apiKey, additionalPropert
     const addContactResponse = await fetch(`https://api.hubapi.com/crm/v3/objects/contacts`, {
         method: 'POST',
         headers: {
-            Authorization: `Bearer ${apiKey}`,
+            Authorization: `Bearer ${accessToken}`,
             'Content-Type': 'application/json'
         },
         body: JSON.stringify({ properties: { email: email, ...hubspotFilteredProps } })
@@ -270,7 +270,7 @@ async function createHubspotContact(email, properties, apiKey, additionalPropert
                 {
                     method: 'PATCH',
                     headers: {
-                        Authorization: `Bearer ${apiKey}`,
+                        Authorization: `Bearer ${accessToken}`,
                         'Content-Type': 'application/json'
                     },
                     body: JSON.stringify({ properties: { email: email, ...hubspotFilteredProps } })
