@@ -129,7 +129,6 @@ async function getHubspotContacts(global, storage) {
 
     const loadedContacts = []
     const authResponse = await fetch(requestUrl, {
-        method: 'POST',
         headers: {
             Authorization: `Bearer ${global.hubspotAccessToken}`,
             'Content-Type': 'application/json'
