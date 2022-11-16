@@ -168,7 +168,7 @@ async function updateHubspotScore(email: string, hubspotScore: string, global) {
     const userRes = await posthog.api.get(`/api/projects/@current/persons?email=${email}`, {
         host: global.posthogUrl,
         personalApiKey: global.posthogApiKey,
-        projectApiKey: global.postHogProperty
+        projectApiKey: global.posthogProjectKey
     })
     const userResponse = await userRes.json()
 
