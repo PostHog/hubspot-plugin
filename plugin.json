@@ -40,10 +40,28 @@
         {
             "key": "postHogUrl",
             "hint": "The PostHog instance URL you want Hubspot Scores synced into. Required to sync Hubspot contact scores into PostHog Persons.",
-            "name": "Hubspot Score PostHog Instance",
+            "name": "PostHog Instance",
             "type": "string",
             "default": "https://app.posthog.com",
             "required": true
+        },
+        {
+            "key": "posthogApiKey",
+            "hint": "An API key used to access the PostHog API. Note that this is not the same as the Project API key",
+            "name": "PostHog API Key",
+            "type": "string",
+            "default": "",
+            "secret": true,
+            "required": false
+        },
+        {
+            "key": "posthogProjectKey",
+            "hint": "Project API key for the current project",
+            "name": "Project API Key",
+            "type": "string",
+            "default": "",
+            "secret": false,
+            "required": false
         },
         {
             "key": "syncMode",
