@@ -34,6 +34,8 @@ export async function setupPlugin({ config, global }) {
         global.syncMode = config.syncMode
         global.hubspotAccessToken = config.hubspotAccessToken
         global.posthogUrl = config.postHogUrl
+        global.posthogApiKey = config.posthogApiKey
+        global.posthogProjectKey = config.posthogProjectKey
 
         global.syncScoresIntoPosthog = global.posthogUrl
 
@@ -164,7 +166,9 @@ async function updateHubspotScore(email: string, hubspotScore: string, global) {
     let updated = false
 
     const userRes = await posthog.api.get(`/api/projects/@current/persons?email=${email}`, {
-        host: global.posthogUrl
+        host: global.posthogUrl,
+        personalApiKey: global.posthogApiKey,
+        projectApiKey: global.postHogProperty
     })
     const userResponse = await userRes.json()
 
