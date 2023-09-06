@@ -39,15 +39,15 @@
         },
         {
             "key": "postHogUrl",
-            "hint": "The PostHog instance URL you want Hubspot Scores synced into. Required to sync Hubspot contact scores into PostHog Persons.",
+            "hint": "Deprecated",
             "name": "PostHog Instance",
             "type": "string",
             "default": "https://app.posthog.com",
-            "required": true
+            "required": false
         },
         {
             "key": "posthogApiKey",
-            "hint": "An API key used to access the PostHog API. Note that this is not the same as the Project API key",
+            "hint": "Deprecated",
             "name": "PostHog API Key",
             "type": "string",
             "default": "",
@@ -56,7 +56,7 @@
         },
         {
             "key": "posthogProjectKey",
-            "hint": "Project API key for the current project",
+            "hint": "Deprecated",
             "name": "Project API Key",
             "type": "string",
             "default": "",
@@ -65,11 +65,11 @@
         },
         {
             "key": "syncMode",
-            "hint": "If run in debug mode, run each minute and ignore cache. Do not use this in production, only for debugging",
+            "hint": "Deprecated",
             "name": "Debug Mode",
             "type": "choice",
             "default": "production",
-            "required": true,
+            "required": false,
             "choices": ["production", "debug"]
         }
     ],
